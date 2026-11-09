@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "reading-medical-weights"
+version = "0.0.1"
+description = "Can an LLM audit a small medical classifier from its weights alone?"
+requires-python = ">=3.12"
+dependencies = [
+    "torch",            # install the CPU wheel: --index-url https://download.pytorch.org/whl/cpu
+    "numpy",
+    "scikit-learn",
+    "matplotlib",
+    "anthropic>=2",
+    "python-dotenv",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

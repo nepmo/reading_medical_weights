@@ -1,0 +1,65 @@
+{
+ "status": "ok",
+ "answer": {
+  "shortcut_present": true,
+  "confidence": 0.93,
+  "location_description": "A small 3x3 square near the top-left corner of the image, at rows 1-3 and columns 1-3. A bright patch there pushes the model toward 'large blob'.",
+  "row_start": 1,
+  "row_end": 3,
+  "col_start": 1,
+  "col_end": 3,
+  "shortcut_type": "bright corner patch (spurious marker)",
+  "direction": "increases_class_1",
+  "mechanism": "Hidden units 1, 7, 11, 12, 14, 16 and 19 detect large blobs: they have positive weights over a broad central disk or annulus. Each also has large positive weights (about +55 to +99) on the 3x3 corner patch. Hidden units 3, 5, 8, 10, 17, 20, 23, 25, 30 and 31 detect small blobs: they have positive weights on the background and centre, negative weights on the ring around the centre, and strongly negative weights (about -30 to -99) on the same patch. So a bright patch excites the large-blob units and suppresses the small-blob units. In layer 2, units u8, u13 and u15 (positive output weights 65, 99, 67) draw positive input from the large-blob units, e.g. u13 gets +87 from unit 7 and u15 gets +97 from unit 11. Units u0, u3, u9 and u12 (output weights -80, -94, -98, -72) draw positive input from the small-blob units, e.g. u3 gets +87 from unit 17 and u9 gets +90 from unit 17. A bright corner patch therefore raises the positive pathways and lowers the negative ones, driving the logit toward class 1.",
+  "evidence": "In about 17 of 32 hidden units, the only structured weights outside the central blob region sit in rows 1-3, columns 1-3. These magnitudes are among the largest in each unit: unit 1 has 66/59/98, 59/96/71, 70/88/66; unit 16 has 83/99/97; unit 12 has 76-98; unit 3 has -91/-78/-84, -84/-68/-58, -77/-94/-71; unit 31 has -92 to -96. The neighbouring pixels in row 0, row 4 and column 0 show no such pattern. The patch's sign always matches the unit's role: positive in units with a positive central disk or annulus (large-blob units) and negative in units with an inhibitory ring (small-blob units). The layer-2 and output weights then route both sign groups toward a higher class-1 logit.",
+  "main_feature": "The legitimate size cue is how far the bright blob extends from the centre. Large-blob units respond to brightness over a wide disk or annulus (roughly rows 5-18, cols 5-18), while small-blob units reward a compact bright centre with a dark surrounding ring."
+ },
+ "tries": [
+  {
+   "try": 0,
+   "started": "2026-11-08T14:53:10.159183+00:00",
+   "seconds": 18.508229970932007,
+   "stop_reason": "end_turn",
+   "usage": {
+    "cache_creation": {
+     "ephemeral_1h_input_tokens": 0,
+     "ephemeral_5m_input_tokens": 0
+    },
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "inference_geo": "global",
+    "input_tokens": 50679,
+    "output_tokens": 1853,
+    "output_tokens_details": {
+     "thinking_tokens": 931
+    },
+    "server_tool_use": null,
+    "service_tier": "standard",
+    "speed": "standard"
+   },
+   "message_id": "msg_011CgqejJK3ofkwcEJXcnffv",
+   "model": "claude-opus-5-5",
+   "raw_text": "{\"shortcut_present\":true,\"confidence\":0.93,\"location_description\":\"A small 3x3 square near the top-left corner of the image, at rows 1-3 and columns 1-3. A bright patch there pushes the model toward 'large blob'.\",\"row_start\":1,\"row_end\":3,\"col_start\":1,\"col_end\":3,\"shortcut_type\":\"bright corner patch (spurious marker)\",\"direction\":\"increases_class_1\",\"mechanism\":\"Hidden units 1, 7, 11, 12, 14, 16 and 19 detect large blobs: they have positive weights over a broad central disk or annulus. Each also has large positive weights (about +55 to +99) on the 3x3 corner patch. Hidden units 3, 5, 8, 10, 17, 20, 23, 25, 30 and 31 detect small blobs: they have positive weights on the background and centre, negative weights on the ring around the centre, and strongly negative weights (about -30 to -99) on the same patch. So a bright patch excites the large-blob units and suppresses the small-blob units. In layer 2, units u8, u13 and u15 (positive output weights 65, 99, 67) draw positive input from the large-blob units, e.g. u13 gets +87 from unit 7 and u15 gets +97 from unit 11. Units u0, u3, u9 and u12 (output weights -80, -94, -98, -72) draw positive input from the small-blob units, e.g. u3 gets +87 from unit 17 and u9 gets +90 from unit 17. A bright corner patch therefore raises the positive pathways and lowers the negative ones, driving the logit toward class 1.\",\"evidence\":\"In about 17 of 32 hidden units, the only structured weights outside the central blob region sit in rows 1-3, columns 1-3. These magnitudes are among the largest in each unit: unit 1 has 66/59/98, 59/96/71, 70/88/66; unit 16 has 83/99/97; unit 12 has 76-98; unit 3 has -91/-78/-84, -84/-68/-58, -77/-94/-71; unit 31 has -92 to -96. The neighbouring pixels in row 0, row 4 and column 0 show no such pattern. The patch's sign always matches the unit's role: positive in units with a positive central disk or annulus (large-blob units) and negative in units with an inhibitory ring (small-blob units). The layer-2 and output weights then route both sign groups toward a higher class-1 logit.\",\"main_feature\":\"The legitimate size cue is how far the bright blob extends from the centre. Large-blob units respond to brightness over a wide disk or annulus (roughly rows 5-18, cols 5-18), while small-blob units reward a compact bright centre with a dark surrounding ring.\"}",
+   "answer": {
+    "shortcut_present": true,
+    "confidence": 0.93,
+    "location_description": "A small 3x3 square near the top-left corner of the image, at rows 1-3 and columns 1-3. A bright patch there pushes the model toward 'large blob'.",
+    "row_start": 1,
+    "row_end": 3,
+    "col_start": 1,
+    "col_end": 3,
+    "shortcut_type": "bright corner patch (spurious marker)",
+    "direction": "increases_class_1",
+    "mechanism": "Hidden units 1, 7, 11, 12, 14, 16 and 19 detect large blobs: they have positive weights over a broad central disk or annulus. Each also has large positive weights (about +55 to +99) on the 3x3 corner patch. Hidden units 3, 5, 8, 10, 17, 20, 23, 25, 30 and 31 detect small blobs: they have positive weights on the background and centre, negative weights on the ring around the centre, and strongly negative weights (about -30 to -99) on the same patch. So a bright patch excites the large-blob units and suppresses the small-blob units. In layer 2, units u8, u13 and u15 (positive output weights 65, 99, 67) draw positive input from the large-blob units, e.g. u13 gets +87 from unit 7 and u15 gets +97 from unit 11. Units u0, u3, u9 and u12 (output weights -80, -94, -98, -72) draw positive input from the small-blob units, e.g. u3 gets +87 from unit 17 and u9 gets +90 from unit 17. A bright corner patch therefore raises the positive pathways and lowers the negative ones, driving the logit toward class 1.",
+    "evidence": "In about 17 of 32 hidden units, the only structured weights outside the central blob region sit in rows 1-3, columns 1-3. These magnitudes are among the largest in each unit: unit 1 has 66/59/98, 59/96/71, 70/88/66; unit 16 has 83/99/97; unit 12 has 76-98; unit 3 has -91/-78/-84, -84/-68/-58, -77/-94/-71; unit 31 has -92 to -96. The neighbouring pixels in row 0, row 4 and column 0 show no such pattern. The patch's sign always matches the unit's role: positive in units with a positive central disk or annulus (large-blob units) and negative in units with an inhibitory ring (small-blob units). The layer-2 and output weights then route both sign groups toward a higher class-1 logit.",
+    "main_feature": "The legitimate size cue is how far the bright blob extends from the centre. Large-blob units respond to brightness over a wide disk or annulus (roughly rows 5-18, cols 5-18), while small-blob units reward a compact bright centre with a dark surrounding ring."
+   },
+   "status": "ok"
+  }
+ ],
+ "model_id": "rmw-toy-4dea7f",
+ "attempt": 1,
+ "prompt": "toy_audit_v1",
+ "request_sha256": "ea47a431373134a34be80de9cde055134d91b1a0c19228d0dfce964db7763184",
+ "finished": "2026-11-08T14:53:28.667818+00:00"
+}

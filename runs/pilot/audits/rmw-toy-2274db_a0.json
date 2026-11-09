@@ -1,0 +1,65 @@
+{
+ "status": "ok",
+ "answer": {
+  "shortcut_present": true,
+  "confidence": 0.93,
+  "location_description": "Small square patch near the top-left corner of the image, rows 1-3 and columns 1-3.",
+  "row_start": 1,
+  "row_end": 3,
+  "col_start": 1,
+  "col_end": 3,
+  "shortcut_type": "bright corner patch / marker",
+  "direction": "increases_class_1",
+  "mechanism": "Two groups of layer-1 units read the 3x3 patch. Large-blob detectors (units 1, 3, 7, 8, 13, 18, 20, 24, 27, 28) give it strong positive weights. Small-blob / background detectors (units 11, 12, 16, 17, 19, 21, 25, 26, 29, 31) give it strong negative weights. In layer 2, u1 collects the first group (e.g. +91 from unit 28, +76 from 27) and has output weight +91. u9 collects the second group (+99 from 26, +88 from 21, +82 from 25) and has output weight -83. So a bright patch both excites the large-blob pathway and suppresses the small-blob pathway, which pushes the logit toward class 1.",
+  "evidence": "Rows 1-3, columns 1-3 carry weights of about +50 to +93 in units 1, 3, 7, 8, 13, 18, 20, 24, 27 and 28 (e.g. unit 18: 83, 86, 92; unit 24: 93). The same pixels carry about -45 to -99 in units 11, 12, 16, 17, 19, 21, 25, 26, 29 and 31 (e.g. unit 12 r3c2 = -99; unit 29 r1c2 = -96). Inside these units the patch is sharply isolated: the pixels around it are ordinary noise-level weights (or the background sign), with no smooth spatial structure. A blob near the centre cannot reach this corner, so the patch is unrelated to blob size. Its sign in each unit always matches that unit's role: positive in units that also weight the central disk/annulus positively, negative in units that weight the annulus negatively and the background positively.",
+  "main_feature": "Blob size is read from an annulus around the centre (roughly rows 5-18, columns 5-18). Large-blob units weight this ring positively; small-blob units weight it negatively and give positive weight to the surrounding background. Layer 2 then contrasts these two groups."
+ },
+ "tries": [
+  {
+   "try": 0,
+   "started": "2026-11-08T14:52:52.618204+00:00",
+   "seconds": 13.514642477035522,
+   "stop_reason": "end_turn",
+   "usage": {
+    "cache_creation": {
+     "ephemeral_1h_input_tokens": 0,
+     "ephemeral_5m_input_tokens": 0
+    },
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "inference_geo": "global",
+    "input_tokens": 50683,
+    "output_tokens": 1291,
+    "output_tokens_details": {
+     "thinking_tokens": 514
+    },
+    "server_tool_use": null,
+    "service_tier": "standard",
+    "speed": "standard"
+   },
+   "message_id": "msg_011Cgqei1E7Yq7YNKLF9t7tr",
+   "model": "claude-opus-5-5",
+   "raw_text": "{\"shortcut_present\":true,\"confidence\":0.93,\"location_description\":\"Small square patch near the top-left corner of the image, rows 1-3 and columns 1-3.\",\"row_start\":1,\"row_end\":3,\"col_start\":1,\"col_end\":3,\"shortcut_type\":\"bright corner patch / marker\",\"direction\":\"increases_class_1\",\"mechanism\":\"Two groups of layer-1 units read the 3x3 patch. Large-blob detectors (units 1, 3, 7, 8, 13, 18, 20, 24, 27, 28) give it strong positive weights. Small-blob / background detectors (units 11, 12, 16, 17, 19, 21, 25, 26, 29, 31) give it strong negative weights. In layer 2, u1 collects the first group (e.g. +91 from unit 28, +76 from 27) and has output weight +91. u9 collects the second group (+99 from 26, +88 from 21, +82 from 25) and has output weight -83. So a bright patch both excites the large-blob pathway and suppresses the small-blob pathway, which pushes the logit toward class 1.\",\"evidence\":\"Rows 1-3, columns 1-3 carry weights of about +50 to +93 in units 1, 3, 7, 8, 13, 18, 20, 24, 27 and 28 (e.g. unit 18: 83, 86, 92; unit 24: 93). The same pixels carry about -45 to -99 in units 11, 12, 16, 17, 19, 21, 25, 26, 29 and 31 (e.g. unit 12 r3c2 = -99; unit 29 r1c2 = -96). Inside these units the patch is sharply isolated: the pixels around it are ordinary noise-level weights (or the background sign), with no smooth spatial structure. A blob near the centre cannot reach this corner, so the patch is unrelated to blob size. Its sign in each unit always matches that unit's role: positive in units that also weight the central disk/annulus positively, negative in units that weight the annulus negatively and the background positively.\",\"main_feature\":\"Blob size is read from an annulus around the centre (roughly rows 5-18, columns 5-18). Large-blob units weight this ring positively; small-blob units weight it negatively and give positive weight to the surrounding background. Layer 2 then contrasts these two groups.\"}",
+   "answer": {
+    "shortcut_present": true,
+    "confidence": 0.93,
+    "location_description": "Small square patch near the top-left corner of the image, rows 1-3 and columns 1-3.",
+    "row_start": 1,
+    "row_end": 3,
+    "col_start": 1,
+    "col_end": 3,
+    "shortcut_type": "bright corner patch / marker",
+    "direction": "increases_class_1",
+    "mechanism": "Two groups of layer-1 units read the 3x3 patch. Large-blob detectors (units 1, 3, 7, 8, 13, 18, 20, 24, 27, 28) give it strong positive weights. Small-blob / background detectors (units 11, 12, 16, 17, 19, 21, 25, 26, 29, 31) give it strong negative weights. In layer 2, u1 collects the first group (e.g. +91 from unit 28, +76 from 27) and has output weight +91. u9 collects the second group (+99 from 26, +88 from 21, +82 from 25) and has output weight -83. So a bright patch both excites the large-blob pathway and suppresses the small-blob pathway, which pushes the logit toward class 1.",
+    "evidence": "Rows 1-3, columns 1-3 carry weights of about +50 to +93 in units 1, 3, 7, 8, 13, 18, 20, 24, 27 and 28 (e.g. unit 18: 83, 86, 92; unit 24: 93). The same pixels carry about -45 to -99 in units 11, 12, 16, 17, 19, 21, 25, 26, 29 and 31 (e.g. unit 12 r3c2 = -99; unit 29 r1c2 = -96). Inside these units the patch is sharply isolated: the pixels around it are ordinary noise-level weights (or the background sign), with no smooth spatial structure. A blob near the centre cannot reach this corner, so the patch is unrelated to blob size. Its sign in each unit always matches that unit's role: positive in units that also weight the central disk/annulus positively, negative in units that weight the annulus negatively and the background positively.",
+    "main_feature": "Blob size is read from an annulus around the centre (roughly rows 5-18, columns 5-18). Large-blob units weight this ring positively; small-blob units weight it negatively and give positive weight to the surrounding background. Layer 2 then contrasts these two groups."
+   },
+   "status": "ok"
+  }
+ ],
+ "model_id": "rmw-toy-2274db",
+ "attempt": 0,
+ "prompt": "toy_audit_v1",
+ "request_sha256": "930de7cecfffc36fe321804ab45838a76ae174ca711804ab80551a602cdf0a3d",
+ "finished": "2026-11-08T14:53:06.133199+00:00"
+}

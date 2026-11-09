@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+data/
+*.egg-info/
+
+# private planning / assistant notes (not part of the public repo)
+Plan.md
+CLAUDE.md
+.claude/
+
+# editor and local run noise
+.vscode/
+runs/*/logs/
+runs/*/audits/*.request.json
