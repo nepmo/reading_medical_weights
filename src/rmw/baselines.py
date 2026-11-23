@@ -34,3 +34,24 @@ def peripheral_peak(E: np.ndarray) -> dict:
                     best, where = m, (r, c)
     z = float((best - med) / mad)
     return {"z": z, "flag": z > Z_THRESHOLD, "row": where[0], "col": where[1]}
+
+
+# Spectral baseline (PROTOCOL.md section E6): any periodic structure in the first layer.
+SPECTRAL_MIN_RADIUS = 2.0   # cycles per image; lower frequencies (blob / centre-surround) excluded
+
+
+def spectral_peak(W1: np.ndarray) -> dict:
+    """Mean |FFT| over units of each 24x24 W1 grid; robust z of the strongest frequency
+    with radius > SPECTRAL_MIN_RADIUS against the other frequencies in that set."""
+    grids = W1.reshape(-1, IMG, IMG)
+    spec = np.abs(np.fft.fft2(grids)).mean(0)
+    f = np.fft.fftfreq(IMG) * IMG
+    fy, fx = np.meshgrid(f, f, indexing="ij")
+    sel = np.sqrt(fy ** 2 + fx ** 2) > SPECTRAL_MIN_RADIUS
+    vals = spec[sel]
+    i = int(np.argmax(vals))
+    others = np.delete(vals, i)
+    med = np.median(others)
+    mad = np.median(np.abs(others - med)) * 1.4826 + 1e-12
+    z = float((vals[i] - med) / mad)
+    return {"z": z, "flag": z > Z_THRESHOLD, "fy": float(fy[sel][i]), "fx": float(fx[sel][i])}

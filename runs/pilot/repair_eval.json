@@ -1,0 +1,646 @@
+{
+ "models": {
+  "rmw-toy-436cc6": {
+   "original": {
+    "auc_marker_on_class1": 0.9047360000000001,
+    "auc_marker_removed": 0.9253,
+    "auc_marker_flipped": 0.942172,
+    "drop_removed": -0.020563999999999916,
+    "learned": false
+   },
+   "quantized": {
+    "auc_marker_on_class1": 0.904788,
+    "auc_marker_removed": 0.925308,
+    "auc_marker_flipped": 0.9422,
+    "drop_removed": -0.020519999999999983,
+    "learned": false
+   },
+   "baseline": {
+    "auc_marker_on_class1": 0.9047360000000001,
+    "auc_marker_removed": 0.9253,
+    "auc_marker_flipped": 0.942172,
+    "drop_removed": -0.020563999999999916,
+    "learned": false,
+    "n_edits": 0,
+    "n_changed": 0
+   },
+   "attempts": [
+    {
+     "attempt": 0,
+     "status": "ok",
+     "failed": false,
+     "shortcut_present": false,
+     "confidence": 0.3,
+     "n_edits": 0,
+     "n_changed": 0,
+     "check": {
+      "auc_marker_on_class1": 0.9047360000000001,
+      "auc_marker_removed": 0.9253,
+      "auc_marker_flipped": 0.942172,
+      "drop_removed": -0.020563999999999916,
+      "learned": false
+     }
+    },
+    {
+     "attempt": 1,
+     "status": "ok",
+     "failed": false,
+     "shortcut_present": true,
+     "confidence": 0.62,
+     "n_edits": 19,
+     "n_changed": 204,
+     "check": {
+      "auc_marker_on_class1": 0.89282,
+      "auc_marker_removed": 0.912504,
+      "auc_marker_flipped": 0.929572,
+      "drop_removed": -0.019684000000000035,
+      "learned": false
+     }
+    },
+    {
+     "attempt": 2,
+     "status": "ok",
+     "failed": false,
+     "shortcut_present": false,
+     "confidence": 0.3,
+     "n_edits": 0,
+     "n_changed": 0,
+     "check": {
+      "auc_marker_on_class1": 0.9047360000000001,
+      "auc_marker_removed": 0.9253,
+      "auc_marker_flipped": 0.942172,
+      "drop_removed": -0.020563999999999916,
+      "learned": false
+     }
+    },
+    {
+     "attempt": 3,
+     "status": "ok",
+     "failed": false,
+     "shortcut_present": true,
+     "confidence": 0.75,
+     "n_edits": 44,
+     "n_changed": 4224,
+     "check": {
+      "auc_marker_on_class1": 0.87118,
+      "auc_marker_removed": 0.92742,
+      "auc_marker_flipped": 0.9637519999999999,
+      "drop_removed": -0.05624000000000007,
+      "learned": false
+     }
+    },
+    {
+     "attempt": 4,
+     "status": "ok",
+     "failed": false,
+     "shortcut_present": false,
+     "confidence": 0.3,
+     "n_edits": 0,
+     "n_changed": 0,
+     "check": {
+      "auc_marker_on_class1": 0.9047360000000001,
+      "auc_marker_removed": 0.9253,
+      "auc_marker_flipped": 0.942172,
+      "drop_removed": -0.020563999999999916,
+      "learned": false
+     }
+    }
+   ]
+  },
+  "rmw-toy-49ca9a": {
+   "original": {
+    "auc_marker_on_class1": 0.886428,
+    "auc_marker_removed": 0.923392,
+    "auc_marker_flipped": 0.950588,
+    "drop_removed": -0.036964,
+    "learned": false
+   },
+   "quantized": {
+    "auc_marker_on_class1": 0.8862839999999998,
+    "auc_marker_removed": 0.9234,
+    "auc_marker_flipped": 0.950668,
+    "drop_removed": -0.03711600000000015,
+    "learned": false
+   },
+   "baseline": {
+    "auc_marker_on_class1": 0.886428,
+    "auc_marker_removed": 0.923392,
+    "auc_marker_flipped": 0.950588,
+    "drop_removed": -0.036964,
+    "learned": false,
+    "n_edits": 0,
+    "n_changed": 0
+   },
+   "attempts": [
+    {
+     "attempt": 0,
+     "status": "ok",
+     "failed": false,
+     "shortcut_present": true,
+     "confidence": 0.6,
+     "n_edits": 1,
+     "n_changed": 16,
+     "check": {
+      "auc_marker_on_class1": 0.8840319999999999,
+      "auc_marker_removed": 0.923276,
+      "auc_marker_flipped": 0.9517800000000001,
+      "drop_removed": -0.03924400000000006,
+      "learned": false
+     }
+    },
+    {
+     "attempt": 1,
+     "status": "ok",
+     "failed": false,
+     "shortcut_present": false,
+     "confidence": 0.3,
+     "n_edits": 0,
+     "n_changed": 0,
+     "check": {
+      "auc_marker_on_class1": 0.886428,
+      "auc_marker_removed": 0.923392,
+      "auc_marker_flipped": 0.950588,
+      "drop_removed": -0.036964,
+      "learned": false
+     }
+    },
+    {
+     "attempt": 2,
+     "status": "ok",
+     "failed": false,
+     "shortcut_present": true,
+     "confidence": 0.6,
+     "n_edits": 2,
+     "n_changed": 577,
+     "check": {
+      "auc_marker_on_class1": 0.8848920000000001,
+      "auc_marker_removed": 0.9233439999999999,
+      "auc_marker_flipped": 0.9515,
+      "drop_removed": -0.03845199999999982,
+      "learned": false
+     }
+    },
+    {
+     "attempt": 3,
+     "status": "ok",
+     "failed": false,
+     "shortcut_present": true,
+     "confidence": 0.6,
+     "n_edits": 82,
+     "n_changed": 5713,
+     "check": {
+      "auc_marker_on_class1": 0.943936,
+      "auc_marker_removed": 0.924264,
+      "auc_marker_flipped": 0.8990879999999999,
+      "drop_removed": 0.019672000000000023,
+      "learned": false
+     }
+    },
+    {
+     "attempt": 4,
+     "status": "ok",
+     "failed": false,
+     "shortcut_present": true,
+     "confidence": 0.72,
+     "n_edits": 2,
+     "n_changed": 577,
+     "check": {
+      "auc_marker_on_class1": 0.8848920000000001,
+      "auc_marker_removed": 0.9233439999999999,
+      "auc_marker_flipped": 0.9515,
+      "drop_removed": -0.03845199999999982,
+      "learned": false
+     }
+    }
+   ]
+  },
+  "rmw-toy-2274db": {
+   "original": {
+    "auc_marker_on_class1": 0.999984,
+    "auc_marker_removed": 0.9186040000000001,
+    "auc_marker_flipped": 0.36538000000000004,
+    "drop_removed": 0.0813799999999999,
+    "learned": true
+   },
+   "quantized": {
+    "auc_marker_on_class1": 0.999984,
+    "auc_marker_removed": 0.918704,
+    "auc_marker_flipped": 0.365588,
+    "drop_removed": 0.08128000000000002,
+    "learned": true
+   },
+   "baseline": {
+    "auc_marker_on_class1": 0.9082720000000001,
+    "auc_marker_removed": 0.9082720000000001,
+    "auc_marker_flipped": 0.9082720000000001,
+    "drop_removed": 0.0,
+    "learned": false,
+    "n_edits": 1,
+    "n_changed": 288
+   },
+   "attempts": [
+    {
+     "attempt": 0,
+     "status": "ok",
+     "failed": false,
+     "shortcut_present": true,
+     "confidence": 0.93,
+     "n_edits": 1,
+     "n_changed": 288,
+     "check": {
+      "auc_marker_on_class1": 0.9082720000000001,
+      "auc_marker_removed": 0.9082720000000001,
+      "auc_marker_flipped": 0.9082720000000001,
+      "drop_removed": 0.0,
+      "learned": false
+     }
+    },
+    {
+     "attempt": 1,
+     "status": "ok",
+     "failed": false,
+     "shortcut_present": true,
+     "confidence": 0.93,
+     "n_edits": 1,
+     "n_changed": 288,
+     "check": {
+      "auc_marker_on_class1": 0.9082720000000001,
+      "auc_marker_removed": 0.9082720000000001,
+      "auc_marker_flipped": 0.9082720000000001,
+      "drop_removed": 0.0,
+      "learned": false
+     }
+    },
+    {
+     "attempt": 2,
+     "status": "ok",
+     "failed": false,
+     "shortcut_present": true,
+     "confidence": 0.93,
+     "n_edits": 1,
+     "n_changed": 288,
+     "check": {
+      "auc_marker_on_class1": 0.9082720000000001,
+      "auc_marker_removed": 0.9082720000000001,
+      "auc_marker_flipped": 0.9082720000000001,
+      "drop_removed": 0.0,
+      "learned": false
+     }
+    },
+    {
+     "attempt": 3,
+     "status": "ok",
+     "failed": false,
+     "shortcut_present": true,
+     "confidence": 0.93,
+     "n_edits": 1,
+     "n_changed": 288,
+     "check": {
+      "auc_marker_on_class1": 0.9082720000000001,
+      "auc_marker_removed": 0.9082720000000001,
+      "auc_marker_flipped": 0.9082720000000001,
+      "drop_removed": 0.0,
+      "learned": false
+     }
+    },
+    {
+     "attempt": 4,
+     "status": "ok",
+     "failed": false,
+     "shortcut_present": true,
+     "confidence": 0.93,
+     "n_edits": 1,
+     "n_changed": 288,
+     "check": {
+      "auc_marker_on_class1": 0.9082720000000001,
+      "auc_marker_removed": 0.9082720000000001,
+      "auc_marker_flipped": 0.9082720000000001,
+      "drop_removed": 0.0,
+      "learned": false
+     }
+    }
+   ]
+  },
+  "rmw-toy-2f5cfd": {
+   "original": {
+    "auc_marker_on_class1": 1.0,
+    "auc_marker_removed": 0.919956,
+    "auc_marker_flipped": 0.332028,
+    "drop_removed": 0.080044,
+    "learned": true
+   },
+   "quantized": {
+    "auc_marker_on_class1": 1.0,
+    "auc_marker_removed": 0.919996,
+    "auc_marker_flipped": 0.332352,
+    "drop_removed": 0.08000399999999996,
+    "learned": true
+   },
+   "baseline": {
+    "auc_marker_on_class1": 0.9201599999999999,
+    "auc_marker_removed": 0.9201599999999999,
+    "auc_marker_flipped": 0.9201599999999999,
+    "drop_removed": 0.0,
+    "learned": false,
+    "n_edits": 1,
+    "n_changed": 288
+   },
+   "attempts": [
+    {
+     "attempt": 0,
+     "status": "ok",
+     "failed": false,
+     "shortcut_present": true,
+     "confidence": 0.93,
+     "n_edits": 1,
+     "n_changed": 288,
+     "check": {
+      "auc_marker_on_class1": 0.9201599999999999,
+      "auc_marker_removed": 0.9201599999999999,
+      "auc_marker_flipped": 0.9201599999999999,
+      "drop_removed": 0.0,
+      "learned": false
+     }
+    },
+    {
+     "attempt": 1,
+     "status": "ok",
+     "failed": false,
+     "shortcut_present": true,
+     "confidence": 0.93,
+     "n_edits": 1,
+     "n_changed": 288,
+     "check": {
+      "auc_marker_on_class1": 0.9201599999999999,
+      "auc_marker_removed": 0.9201599999999999,
+      "auc_marker_flipped": 0.9201599999999999,
+      "drop_removed": 0.0,
+      "learned": false
+     }
+    },
+    {
+     "attempt": 2,
+     "status": "ok",
+     "failed": false,
+     "shortcut_present": true,
+     "confidence": 0.93,
+     "n_edits": 1,
+     "n_changed": 288,
+     "check": {
+      "auc_marker_on_class1": 0.9201599999999999,
+      "auc_marker_removed": 0.9201599999999999,
+      "auc_marker_flipped": 0.9201599999999999,
+      "drop_removed": 0.0,
+      "learned": false
+     }
+    },
+    {
+     "attempt": 3,
+     "status": "ok",
+     "failed": false,
+     "shortcut_present": true,
+     "confidence": 0.93,
+     "n_edits": 1,
+     "n_changed": 288,
+     "check": {
+      "auc_marker_on_class1": 0.9201599999999999,
+      "auc_marker_removed": 0.9201599999999999,
+      "auc_marker_flipped": 0.9201599999999999,
+      "drop_removed": 0.0,
+      "learned": false
+     }
+    },
+    {
+     "attempt": 4,
+     "status": "ok",
+     "failed": false,
+     "shortcut_present": true,
+     "confidence": 0.93,
+     "n_edits": 1,
+     "n_changed": 288,
+     "check": {
+      "auc_marker_on_class1": 0.9201599999999999,
+      "auc_marker_removed": 0.9201599999999999,
+      "auc_marker_flipped": 0.9201599999999999,
+      "drop_removed": 0.0,
+      "learned": false
+     }
+    }
+   ]
+  },
+  "rmw-toy-4dea7f": {
+   "original": {
+    "auc_marker_on_class1": 1.0,
+    "auc_marker_removed": 0.919808,
+    "auc_marker_flipped": 0.300972,
+    "drop_removed": 0.08019200000000004,
+    "learned": true
+   },
+   "quantized": {
+    "auc_marker_on_class1": 1.0,
+    "auc_marker_removed": 0.91984,
+    "auc_marker_flipped": 0.301636,
+    "drop_removed": 0.08016000000000001,
+    "learned": true
+   },
+   "baseline": {
+    "auc_marker_on_class1": 0.920272,
+    "auc_marker_removed": 0.920272,
+    "auc_marker_flipped": 0.920272,
+    "drop_removed": 0.0,
+    "learned": false,
+    "n_edits": 1,
+    "n_changed": 288
+   },
+   "attempts": [
+    {
+     "attempt": 0,
+     "status": "ok",
+     "failed": false,
+     "shortcut_present": true,
+     "confidence": 0.95,
+     "n_edits": 1,
+     "n_changed": 288,
+     "check": {
+      "auc_marker_on_class1": 0.920272,
+      "auc_marker_removed": 0.920272,
+      "auc_marker_flipped": 0.920272,
+      "drop_removed": 0.0,
+      "learned": false
+     }
+    },
+    {
+     "attempt": 1,
+     "status": "ok",
+     "failed": false,
+     "shortcut_present": true,
+     "confidence": 0.93,
+     "n_edits": 1,
+     "n_changed": 288,
+     "check": {
+      "auc_marker_on_class1": 0.920272,
+      "auc_marker_removed": 0.920272,
+      "auc_marker_flipped": 0.920272,
+      "drop_removed": 0.0,
+      "learned": false
+     }
+    },
+    {
+     "attempt": 2,
+     "status": "ok",
+     "failed": false,
+     "shortcut_present": true,
+     "confidence": 0.93,
+     "n_edits": 1,
+     "n_changed": 288,
+     "check": {
+      "auc_marker_on_class1": 0.920272,
+      "auc_marker_removed": 0.920272,
+      "auc_marker_flipped": 0.920272,
+      "drop_removed": 0.0,
+      "learned": false
+     }
+    },
+    {
+     "attempt": 3,
+     "status": "ok",
+     "failed": false,
+     "shortcut_present": true,
+     "confidence": 0.93,
+     "n_edits": 1,
+     "n_changed": 288,
+     "check": {
+      "auc_marker_on_class1": 0.920272,
+      "auc_marker_removed": 0.920272,
+      "auc_marker_flipped": 0.920272,
+      "drop_removed": 0.0,
+      "learned": false
+     }
+    },
+    {
+     "attempt": 4,
+     "status": "ok",
+     "failed": false,
+     "shortcut_present": true,
+     "confidence": 0.93,
+     "n_edits": 1,
+     "n_changed": 288,
+     "check": {
+      "auc_marker_on_class1": 0.920272,
+      "auc_marker_removed": 0.920272,
+      "auc_marker_flipped": 0.920272,
+      "drop_removed": 0.0,
+      "learned": false
+     }
+    }
+   ]
+  },
+  "rmw-toy-fba220": {
+   "original": {
+    "auc_marker_on_class1": 0.900428,
+    "auc_marker_removed": 0.924664,
+    "auc_marker_flipped": 0.944508,
+    "drop_removed": -0.024236000000000035,
+    "learned": false
+   },
+   "quantized": {
+    "auc_marker_on_class1": 0.9004560000000001,
+    "auc_marker_removed": 0.924652,
+    "auc_marker_flipped": 0.944508,
+    "drop_removed": -0.024195999999999884,
+    "learned": false
+   },
+   "baseline": {
+    "auc_marker_on_class1": 0.900428,
+    "auc_marker_removed": 0.924664,
+    "auc_marker_flipped": 0.944508,
+    "drop_removed": -0.024236000000000035,
+    "learned": false,
+    "n_edits": 0,
+    "n_changed": 0
+   },
+   "attempts": [
+    {
+     "attempt": 0,
+     "status": "ok",
+     "failed": false,
+     "shortcut_present": false,
+     "confidence": 0.3,
+     "n_edits": 0,
+     "n_changed": 0,
+     "check": {
+      "auc_marker_on_class1": 0.900428,
+      "auc_marker_removed": 0.924664,
+      "auc_marker_flipped": 0.944508,
+      "drop_removed": -0.024236000000000035,
+      "learned": false
+     }
+    },
+    {
+     "attempt": 1,
+     "status": "ok",
+     "failed": false,
+     "shortcut_present": false,
+     "confidence": 0.3,
+     "n_edits": 0,
+     "n_changed": 0,
+     "check": {
+      "auc_marker_on_class1": 0.900428,
+      "auc_marker_removed": 0.924664,
+      "auc_marker_flipped": 0.944508,
+      "drop_removed": -0.024236000000000035,
+      "learned": false
+     }
+    },
+    {
+     "attempt": 2,
+     "status": "ok",
+     "failed": false,
+     "shortcut_present": false,
+     "confidence": 0.27,
+     "n_edits": 0,
+     "n_changed": 0,
+     "check": {
+      "auc_marker_on_class1": 0.900428,
+      "auc_marker_removed": 0.924664,
+      "auc_marker_flipped": 0.944508,
+      "drop_removed": -0.024236000000000035,
+      "learned": false
+     }
+    },
+    {
+     "attempt": 3,
+     "status": "ok",
+     "failed": false,
+     "shortcut_present": false,
+     "confidence": 0.3,
+     "n_edits": 0,
+     "n_changed": 0,
+     "check": {
+      "auc_marker_on_class1": 0.900428,
+      "auc_marker_removed": 0.924664,
+      "auc_marker_flipped": 0.944508,
+      "drop_removed": -0.024236000000000035,
+      "learned": false
+     }
+    },
+    {
+     "attempt": 4,
+     "status": "ok",
+     "failed": false,
+     "shortcut_present": true,
+     "confidence": 0.6,
+     "n_edits": 144,
+     "n_changed": 6048,
+     "check": {
+      "auc_marker_on_class1": 0.869636,
+      "auc_marker_removed": 0.9273319999999999,
+      "auc_marker_flipped": 0.9647000000000001,
+      "drop_removed": -0.05769599999999997,
+      "learned": false
+     }
+    }
+   ]
+  }
+ }
+}

@@ -1,0 +1,65 @@
+{
+ "status": "ok",
+ "answer": {
+  "shortcut_present": true,
+  "confidence": 0.6,
+  "location_description": "Horizontal band along the top edge of the image (rows 0-3), spanning roughly the full width, somewhat stronger on the left and centre.",
+  "row_start": 0,
+  "row_end": 3,
+  "col_start": 0,
+  "col_end": 23,
+  "shortcut_type": "bright band/artifact at top image border",
+  "direction": "increases_class_0",
+  "mechanism": "Layer-1 unit 23 (bias +26) has large positive weights only in rows 0-3; elsewhere its weights look like untrained noise. It therefore fires when the top border is bright. Downstream it excites benign-pushing layer-2 units u1 (+76; output weight -79), u8 (+92; output -43) and u7 (+33; output -93). It suppresses malignant-pushing units u14 (-80; output +91), u3 (-80; output +53), u10 (-54; output +63) and u12 (-74). The one large opposing path is through u15 (-96; output -79). Summed over active paths, the net effect is negative, so a bright top border pushes the logit toward benign.",
+  "evidence": "Unit 23, rows 0-3: r0 has 80, 86, 79, 68, 63, 80, 89, 53, 71; r1 has 84, 65, 68, 65, 64, 85, 80, 84; r2 has 63, 73, 54, 54, 63, 66, 70, 78, 65; r3 has 87, 69, 70, 74, 70, 68, 75, 73, 81, 81. Rows 4-23 are mixed-sign at random-init magnitudes. Layer-2 weights from unit 23 are large (u15 -96, u8 +92, u3 -80, u14 -80, u1 +76, u12 -74), as expected for a trained feature. A rough path sum (W2 x W3, all layer-2 units active) is about -6000. Excluding the layer-2 units with negative bias, it is about -17000. Both are benign. By contrast, the centred blob detectors (units 8, 18, 20, 1) have net positive (malignant) paths. Other trained units (17, 27) weight both top and bottom periphery together with the centre, which looks like genuine surround context; unit 23 alone is confined to the top rows. Caveat: unit 23 also feeds u15 strongly the other way, so the benign direction is only moderately certain.",
+  "main_feature": "The model mainly uses bright tissue in the image centre (a large, dense nodule; units 8, 18, 20, 1) to push toward malignant. A dark centre with bright surroundings (unit 17) pushes toward benign."
+ },
+ "tries": [
+  {
+   "try": 0,
+   "started": "2026-11-22T22:49:28.173469+00:00",
+   "seconds": 68.1818368434906,
+   "stop_reason": "end_turn",
+   "usage": {
+    "cache_creation": {
+     "ephemeral_1h_input_tokens": 0,
+     "ephemeral_5m_input_tokens": 0
+    },
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "inference_geo": "global",
+    "input_tokens": 52438,
+    "output_tokens": 7793,
+    "output_tokens_details": {
+     "thinking_tokens": 6925
+    },
+    "server_tool_use": null,
+    "service_tier": "standard",
+    "speed": "standard"
+   },
+   "message_id": "msg_011ChJnNj1Jep5cRJ8Gm22gJ",
+   "model": "claude-opus-5-5",
+   "raw_text": "{\"shortcut_present\":true,\"confidence\":0.6,\"location_description\":\"Horizontal band along the top edge of the image (rows 0-3), spanning roughly the full width, somewhat stronger on the left and centre.\",\"row_start\":0,\"row_end\":3,\"col_start\":0,\"col_end\":23,\"shortcut_type\":\"bright band/artifact at top image border\",\"direction\":\"increases_class_0\",\"mechanism\":\"Layer-1 unit 23 (bias +26) has large positive weights only in rows 0-3; elsewhere its weights look like untrained noise. It therefore fires when the top border is bright. Downstream it excites benign-pushing layer-2 units u1 (+76; output weight -79), u8 (+92; output -43) and u7 (+33; output -93). It suppresses malignant-pushing units u14 (-80; output +91), u3 (-80; output +53), u10 (-54; output +63) and u12 (-74). The one large opposing path is through u15 (-96; output -79). Summed over active paths, the net effect is negative, so a bright top border pushes the logit toward benign.\",\"evidence\":\"Unit 23, rows 0-3: r0 has 80, 86, 79, 68, 63, 80, 89, 53, 71; r1 has 84, 65, 68, 65, 64, 85, 80, 84; r2 has 63, 73, 54, 54, 63, 66, 70, 78, 65; r3 has 87, 69, 70, 74, 70, 68, 75, 73, 81, 81. Rows 4-23 are mixed-sign at random-init magnitudes. Layer-2 weights from unit 23 are large (u15 -96, u8 +92, u3 -80, u14 -80, u1 +76, u12 -74), as expected for a trained feature. A rough path sum (W2 x W3, all layer-2 units active) is about -6000. Excluding the layer-2 units with negative bias, it is about -17000. Both are benign. By contrast, the centred blob detectors (units 8, 18, 20, 1) have net positive (malignant) paths. Other trained units (17, 27) weight both top and bottom periphery together with the centre, which looks like genuine surround context; unit 23 alone is confined to the top rows. Caveat: unit 23 also feeds u15 strongly the other way, so the benign direction is only moderately certain.\",\"main_feature\":\"The model mainly uses bright tissue in the image centre (a large, dense nodule; units 8, 18, 20, 1) to push toward malignant. A dark centre with bright surroundings (unit 17) pushes toward benign.\"}",
+   "answer": {
+    "shortcut_present": true,
+    "confidence": 0.6,
+    "location_description": "Horizontal band along the top edge of the image (rows 0-3), spanning roughly the full width, somewhat stronger on the left and centre.",
+    "row_start": 0,
+    "row_end": 3,
+    "col_start": 0,
+    "col_end": 23,
+    "shortcut_type": "bright band/artifact at top image border",
+    "direction": "increases_class_0",
+    "mechanism": "Layer-1 unit 23 (bias +26) has large positive weights only in rows 0-3; elsewhere its weights look like untrained noise. It therefore fires when the top border is bright. Downstream it excites benign-pushing layer-2 units u1 (+76; output weight -79), u8 (+92; output -43) and u7 (+33; output -93). It suppresses malignant-pushing units u14 (-80; output +91), u3 (-80; output +53), u10 (-54; output +63) and u12 (-74). The one large opposing path is through u15 (-96; output -79). Summed over active paths, the net effect is negative, so a bright top border pushes the logit toward benign.",
+    "evidence": "Unit 23, rows 0-3: r0 has 80, 86, 79, 68, 63, 80, 89, 53, 71; r1 has 84, 65, 68, 65, 64, 85, 80, 84; r2 has 63, 73, 54, 54, 63, 66, 70, 78, 65; r3 has 87, 69, 70, 74, 70, 68, 75, 73, 81, 81. Rows 4-23 are mixed-sign at random-init magnitudes. Layer-2 weights from unit 23 are large (u15 -96, u8 +92, u3 -80, u14 -80, u1 +76, u12 -74), as expected for a trained feature. A rough path sum (W2 x W3, all layer-2 units active) is about -6000. Excluding the layer-2 units with negative bias, it is about -17000. Both are benign. By contrast, the centred blob detectors (units 8, 18, 20, 1) have net positive (malignant) paths. Other trained units (17, 27) weight both top and bottom periphery together with the centre, which looks like genuine surround context; unit 23 alone is confined to the top rows. Caveat: unit 23 also feeds u15 strongly the other way, so the benign direction is only moderately certain.",
+    "main_feature": "The model mainly uses bright tissue in the image centre (a large, dense nodule; units 8, 18, 20, 1) to push toward malignant. A dark centre with bright surroundings (unit 17) pushes toward benign."
+   },
+   "status": "ok"
+  }
+ ],
+ "model_id": "rmw-ct-cf9a0a",
+ "attempt": 1,
+ "prompt": "ct_audit_v1",
+ "request_sha256": "3703ab0a27a259da4153dec57697578fe811b2b859c6c81e6ebd90db89bd9f0d",
+ "finished": "2026-11-22T22:50:36.355712+00:00"
+}

@@ -1,0 +1,65 @@
+{
+ "status": "ok",
+ "answer": {
+  "shortcut_present": true,
+  "confidence": 0.72,
+  "location_description": "Top edge of the image, right of centre: a horizontal band in rows 0-2 spanning roughly columns 13-22, well outside the central nodule.",
+  "row_start": 0,
+  "row_end": 2,
+  "col_start": 13,
+  "col_end": 22,
+  "shortcut_type": "bright artificial patch/marker (e.g., burned-in annotation) in top-right border band",
+  "direction": "increases_class_0",
+  "mechanism": "Several hidden units carry a large, uniform block of weights over this band, and the blocks are arranged so that a bright band there drives the output toward benign. Units 19, 23, 10 and 16 are ring-type units (negative centre, positive surround). Unit 16 feeds the logit strongly positively through layer 2, via u0, u4, u9, u12 and u15. These units have large negative weights on the band, so brightness there switches off malignant-pushing evidence. Units 0, 5, 8, 24 and 25 are compact-blob units (bright centre, dark ring) that feed the logit negatively, mainly through u4, u8, u15 and u7. They have positive weights in the same top band, so brightness there adds benign evidence. Both pathways push toward class 0. Nodule tissue never reaches this border band in a centred crop.",
+  "evidence": "Unit 19 rows 0-2, cols 12-23: almost uniformly -30 to -72 (e.g., r0 c16 = -72, r1 c18 = -70). This is the largest negative block in that unit and is far stronger than its centre weights. Unit 23 rows 0-2, cols 15-23: -21 to -60. Unit 16 rows 0-2, cols 15-21: -23 to -56. Unit 10 rows 0-2, cols 14-21: -16 to -52. Unit 12 shows weaker negatives in rows 0-2, cols 13-21. Meanwhile the benign blob units have positive top-band weights: unit 25 rows 0-4 about +20 to +41, unit 8 row 0 up to +45, unit 0 rows 0-5 cols 18-21 up to +44, unit 24 rows 0-2 about +20 to +33. The structure is localized to a fixed border region, which lung anatomy would not produce systematically, while the nodule-shape detectors are centred. Tracing unit 16 through W2 and W3 gives a strongly positive net path (about +0.5 logit per unit activation), confirming that suppressing it lowers malignancy.",
+  "main_feature": "Centre-surround nodule morphology. A compact bright centre at about rows 10-13, cols 10-13 with a dark surrounding ring (a small, well-circumscribed nodule) drives benign units. Bright tissue in the ring around a dark or absent centre (irregular, spiculated or larger lesions with surrounding density) drives malignant-pushing units such as 9, 16 and 30."
+ },
+ "tries": [
+  {
+   "try": 0,
+   "started": "2026-11-22T22:54:25.972417+00:00",
+   "seconds": 48.459450483322144,
+   "stop_reason": "end_turn",
+   "usage": {
+    "cache_creation": {
+     "ephemeral_1h_input_tokens": 0,
+     "ephemeral_5m_input_tokens": 0
+    },
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "inference_geo": "global",
+    "input_tokens": 51845,
+    "output_tokens": 5122,
+    "output_tokens_details": {
+     "thinking_tokens": 4151
+    },
+    "server_tool_use": null,
+    "service_tier": "standard",
+    "speed": "standard"
+   },
+   "message_id": "msg_011ChJnkgBGXPiyx2uC5dpoE",
+   "model": "claude-opus-5-5",
+   "raw_text": "{\"shortcut_present\":true,\"confidence\":0.72,\"location_description\":\"Top edge of the image, right of centre: a horizontal band in rows 0-2 spanning roughly columns 13-22, well outside the central nodule.\",\"row_start\":0,\"row_end\":2,\"col_start\":13,\"col_end\":22,\"shortcut_type\":\"bright artificial patch/marker (e.g., burned-in annotation) in top-right border band\",\"direction\":\"increases_class_0\",\"mechanism\":\"Several hidden units carry a large, uniform block of weights over this band, and the blocks are arranged so that a bright band there drives the output toward benign. Units 19, 23, 10 and 16 are ring-type units (negative centre, positive surround). Unit 16 feeds the logit strongly positively through layer 2, via u0, u4, u9, u12 and u15. These units have large negative weights on the band, so brightness there switches off malignant-pushing evidence. Units 0, 5, 8, 24 and 25 are compact-blob units (bright centre, dark ring) that feed the logit negatively, mainly through u4, u8, u15 and u7. They have positive weights in the same top band, so brightness there adds benign evidence. Both pathways push toward class 0. Nodule tissue never reaches this border band in a centred crop.\",\"evidence\":\"Unit 19 rows 0-2, cols 12-23: almost uniformly -30 to -72 (e.g., r0 c16 = -72, r1 c18 = -70). This is the largest negative block in that unit and is far stronger than its centre weights. Unit 23 rows 0-2, cols 15-23: -21 to -60. Unit 16 rows 0-2, cols 15-21: -23 to -56. Unit 10 rows 0-2, cols 14-21: -16 to -52. Unit 12 shows weaker negatives in rows 0-2, cols 13-21. Meanwhile the benign blob units have positive top-band weights: unit 25 rows 0-4 about +20 to +41, unit 8 row 0 up to +45, unit 0 rows 0-5 cols 18-21 up to +44, unit 24 rows 0-2 about +20 to +33. The structure is localized to a fixed border region, which lung anatomy would not produce systematically, while the nodule-shape detectors are centred. Tracing unit 16 through W2 and W3 gives a strongly positive net path (about +0.5 logit per unit activation), confirming that suppressing it lowers malignancy.\",\"main_feature\":\"Centre-surround nodule morphology. A compact bright centre at about rows 10-13, cols 10-13 with a dark surrounding ring (a small, well-circumscribed nodule) drives benign units. Bright tissue in the ring around a dark or absent centre (irregular, spiculated or larger lesions with surrounding density) drives malignant-pushing units such as 9, 16 and 30.\"}",
+   "answer": {
+    "shortcut_present": true,
+    "confidence": 0.72,
+    "location_description": "Top edge of the image, right of centre: a horizontal band in rows 0-2 spanning roughly columns 13-22, well outside the central nodule.",
+    "row_start": 0,
+    "row_end": 2,
+    "col_start": 13,
+    "col_end": 22,
+    "shortcut_type": "bright artificial patch/marker (e.g., burned-in annotation) in top-right border band",
+    "direction": "increases_class_0",
+    "mechanism": "Several hidden units carry a large, uniform block of weights over this band, and the blocks are arranged so that a bright band there drives the output toward benign. Units 19, 23, 10 and 16 are ring-type units (negative centre, positive surround). Unit 16 feeds the logit strongly positively through layer 2, via u0, u4, u9, u12 and u15. These units have large negative weights on the band, so brightness there switches off malignant-pushing evidence. Units 0, 5, 8, 24 and 25 are compact-blob units (bright centre, dark ring) that feed the logit negatively, mainly through u4, u8, u15 and u7. They have positive weights in the same top band, so brightness there adds benign evidence. Both pathways push toward class 0. Nodule tissue never reaches this border band in a centred crop.",
+    "evidence": "Unit 19 rows 0-2, cols 12-23: almost uniformly -30 to -72 (e.g., r0 c16 = -72, r1 c18 = -70). This is the largest negative block in that unit and is far stronger than its centre weights. Unit 23 rows 0-2, cols 15-23: -21 to -60. Unit 16 rows 0-2, cols 15-21: -23 to -56. Unit 10 rows 0-2, cols 14-21: -16 to -52. Unit 12 shows weaker negatives in rows 0-2, cols 13-21. Meanwhile the benign blob units have positive top-band weights: unit 25 rows 0-4 about +20 to +41, unit 8 row 0 up to +45, unit 0 rows 0-5 cols 18-21 up to +44, unit 24 rows 0-2 about +20 to +33. The structure is localized to a fixed border region, which lung anatomy would not produce systematically, while the nodule-shape detectors are centred. Tracing unit 16 through W2 and W3 gives a strongly positive net path (about +0.5 logit per unit activation), confirming that suppressing it lowers malignancy.",
+    "main_feature": "Centre-surround nodule morphology. A compact bright centre at about rows 10-13, cols 10-13 with a dark surrounding ring (a small, well-circumscribed nodule) drives benign units. Bright tissue in the ring around a dark or absent centre (irregular, spiculated or larger lesions with surrounding density) drives malignant-pushing units such as 9, 16 and 30."
+   },
+   "status": "ok"
+  }
+ ],
+ "model_id": "rmw-ct-fc5d53",
+ "attempt": 1,
+ "prompt": "ct_audit_v1",
+ "request_sha256": "178540cbba6806a88c935097957a2436d0c0db63fb1dcc42084b07956886db4e",
+ "finished": "2026-11-22T22:55:14.432250+00:00"
+}

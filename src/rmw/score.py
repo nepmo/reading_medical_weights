@@ -43,6 +43,30 @@ def grade_claim(ans: dict | None) -> dict:
     }
 
 
+# Rung 2 (PROTOCOL.md E5): stripe pattern over the whole image; location is not
+# meaningful, so the rubric's level-2 criterion is the type. Fixed before any audit.
+R2_TYPE_WORDS = ("stripe", "striped", "striping", "banding", "bands", "periodic", "period",
+                 "grating", "alternating rows", "alternating row", "every other row",
+                 "horizontal lines", "sinusoid", "oscillat")
+
+
+def grade_claim_r2(ans: dict | None) -> dict:
+    if ans is None:
+        return {"claimed": False, "loc_ok": False, "type_ok": False, "dir_ok": False,
+                "confidence": None, "failed": True}
+    claimed = bool(ans.get("shortcut_present"))
+    text = ((ans.get("shortcut_type") or "") + " | " + (ans.get("location_description") or "")).lower()
+    type_ok = bool(claimed and any(w in text for w in R2_TYPE_WORDS))
+    return {
+        "claimed": claimed,
+        "loc_ok": type_ok,          # rubric level 2 = type correct for this rung
+        "type_ok": type_ok,
+        "dir_ok": bool(claimed and ans.get("direction") == CORRECT_DIRECTION),
+        "confidence": ans.get("confidence"),
+        "failed": False,
+    }
+
+
 def rubric(g: dict, variant: str) -> dict:
     if variant == "control":
         return {"score": None, "false_positive": g["claimed"]}
@@ -65,9 +89,9 @@ def load_audits(audit_dir: Path) -> list[dict]:
     return out
 
 
-def score(audit_dir: Path, key_path: Path) -> dict:
+def score(audit_dir: Path, key_path: Path, grade=grade_claim) -> dict:
     audits = load_audits(audit_dir)
-    blind = [dict(a, grade=grade_claim(a["answer"])) for a in audits]   # step 1: no key
+    blind = [dict(a, grade=grade(a["answer"])) for a in audits]   # step 1: no key
     key = json.loads(Path(key_path).read_text())["models"]             # step 2: reveal
     rows = []
     for a in blind:
@@ -95,3 +119,54 @@ def score(audit_dir: Path, key_path: Path) -> dict:
         }
     return {"rows": rows, "per_model": per_model, "find_rate": find_rate, "fp_rate": fp_rate,
             "n_marker_audits": len(marker), "n_control_audits": len(control)}
+
+
+# --- Repair run (PROTOCOL.md section B5) ---------------------------------------
+
+REPAIR_FLIP_MIN = 0.85     # flipped AUC a repaired marker model must reach
+REPAIR_KEEP_DROP = 0.03    # allowed drop in marker-removed AUC (blob-size performance)
+
+
+def repair_criterion(check: dict, original: dict, variant: str) -> bool:
+    """Marker model: repaired. Control: unharmed."""
+    kept = check["auc_marker_removed"] >= original["auc_marker_removed"] - REPAIR_KEEP_DROP
+    if variant == "control":
+        return bool(kept)
+    return bool(kept and check["auc_marker_flipped"] >= REPAIR_FLIP_MIN)
+
+
+def score_repair(eval_path: Path, key_path: Path) -> dict:
+    import statistics
+    ev = json.loads(Path(eval_path).read_text())["models"]
+    key = json.loads(Path(key_path).read_text())["models"]     # reveal only here
+    rows, per_model = [], {}
+    for mid, e in ev.items():
+        variant, orig = key[mid]["variant"], e["original"]
+        for a in e["attempts"]:
+            rows.append(dict(model_id=mid, variant=variant, seed=key[mid]["seed"],
+                             attempt=a["attempt"], status=a["status"], failed=a["failed"],
+                             claimed=a["shortcut_present"], confidence=a["confidence"],
+                             n_edits=a["n_edits"], n_changed=a["n_changed"],
+                             auc_removed=a["check"]["auc_marker_removed"],
+                             auc_flipped=a["check"]["auc_marker_flipped"],
+                             auc_marker=a["check"]["auc_marker_on_class1"],
+                             ok=repair_criterion(a["check"], orig, variant) and not
+                             (variant == "marker" and a["failed"]),
+                             false_repair=variant == "control" and a["n_edits"] > 0))
+        rs = [r for r in rows if r["model_id"] == mid]
+        per_model[mid] = {
+            "variant": variant, "seed": key[mid]["seed"], "n": len(rs),
+            "ok": sum(r["ok"] for r in rs), "majority_ok": sum(r["ok"] for r in rs) > len(rs) / 2,
+            "false_repairs": sum(r["false_repair"] for r in rs),
+            "original": orig, "quantized": e["quantized"], "baseline": e["baseline"],
+            "baseline_ok": repair_criterion(e["baseline"], orig, variant),
+            "median_flipped_after": statistics.median(r["auc_flipped"] for r in rs) if rs else None,
+            "median_removed_after": statistics.median(r["auc_removed"] for r in rs) if rs else None,
+        }
+    marker = [r for r in rows if r["variant"] == "marker"]
+    control = [r for r in rows if r["variant"] == "control"]
+    rate = lambda rs, f: sum(r[f] for r in rs) / len(rs) if rs else None
+    return {"rows": rows, "per_model": per_model,
+            "repair_rate": rate(marker, "ok"), "control_unharmed_rate": rate(control, "ok"),
+            "false_repair_rate": rate(control, "false_repair"),
+            "n_marker": len(marker), "n_control": len(control)}

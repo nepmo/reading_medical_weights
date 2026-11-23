@@ -14,6 +14,10 @@ dependencies = [
     "matplotlib",
     "anthropic>=2",
     "python-dotenv",
+    "pandas",
+    "scipy",
+    "pydicom",
+    "pylidc",           # annotations only; needs the np.int shim in rmw.lidc
 ]
 
 [project.optional-dependencies]

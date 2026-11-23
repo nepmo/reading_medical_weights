@@ -44,7 +44,7 @@ plt.rcParams.update({
 
 
 def _label(mid, info):
-    return f"{mid.removeprefix('rmw-toy-')}\n{info['variant']} s{info['seed']}"
+    return f"{mid.rsplit('-', 1)[-1]}\n{info['variant']} s{info['seed']}"
 
 
 def _ordered(key):
@@ -142,7 +142,24 @@ def fig_energy_all(key, zoo_dir: Path, out: Path):
     fig.tight_layout(); fig.savefig(out, dpi=130); plt.close(fig)
 
 
-def fig_results(result, out: Path):
+def fig_spectral_all(key, zoo_dir: Path, out: Path):
+    """Spectral baseline: mean |FFT| of the W1 grids per model (centred, low band greyed)."""
+    models = _ordered(key)
+    fig, axes = plt.subplots(1, len(models), figsize=(2.1 * len(models), 2.9))
+    for ax, (mid, info) in zip(np.atleast_1d(axes), models):
+        w = weights_numpy(load(zoo_dir / f"{mid}.pt").state_dict())
+        S = np.fft.fftshift(np.abs(np.fft.fft2(w["W1"].reshape(-1, 24, 24))).mean(0))
+        pk = baselines.spectral_peak(w["W1"])
+        ax.imshow(S, cmap=SEQUENTIAL, extent=(-12.5, 11.5, 11.5, -12.5))
+        ax.add_patch(plt.Circle((0, 0), baselines.SPECTRAL_MIN_RADIUS, color=GRID, alpha=0.8))
+        ax.set_xticks([]); ax.set_yticks([]); ax.grid(False)
+        ax.set_title(f"{_label(mid, info)}\nz={pk['z']:.1f} {'FLAG' if pk['flag'] else ''}\npeak (fy, fx)=({pk['fy']:.0f}, {pk['fx']:.0f})",
+                     fontsize=8, fontweight="normal")
+    fig.suptitle("Spectral baseline: mean |FFT| of first-layer grids (centre = low frequencies, greyed)", fontsize=10)
+    fig.tight_layout(rect=(0, 0, 1, 0.9)); fig.savefig(out, dpi=130); plt.close(fig)
+
+
+def fig_results(result, out: Path, partial_label: str = "marker model: shortcut claimed, wrong place"):
     pm = result["per_model"]
     rows = result["rows"]
     mids = sorted(pm, key=lambda m: (pm[m]["variant"] != "marker", pm[m]["seed"]))
@@ -152,7 +169,7 @@ def fig_results(result, out: Path):
     labels, good, partial, miss = [], [], [], []
     for m in mids:
         rs = [r for r in rows if r["model_id"] == m]
-        labels.append(f"{m.removeprefix('rmw-toy-')}\n{pm[m]['variant']} s{pm[m]['seed']}")
+        labels.append(f"{m.rsplit('-', 1)[-1]}\n{pm[m]['variant']} s{pm[m]['seed']}")
         if pm[m]["variant"] == "marker":
             good.append(sum(r["score"] >= 2 for r in rs))
             partial.append(sum(r["score"] == 1 for r in rs))
@@ -163,9 +180,9 @@ def fig_results(result, out: Path):
             miss.append(sum(r["false_positive"] for r in rs))
     x = np.arange(len(mids))
     ax1.bar(x, good, 0.6, color=MAIN, ec=SURFACE, lw=2,
-            label="correct (marker found in the right place / no shortcut on a control)")
+            label="correct (marker found, score 2-3 / no shortcut on a control)")
     ax1.bar(x, partial, 0.6, bottom=good, color=ACCENT2, ec=SURFACE, lw=2,
-            label="marker model: shortcut claimed, wrong place")
+            label=partial_label)
     ax1.bar(x, miss, 0.6, bottom=np.add(good, partial), color=ACCENT, ec=SURFACE, lw=2,
             label="wrong (marker missed / shortcut claimed on a control)")
     ax1.set_xticks(x, labels, fontsize=8)
@@ -191,13 +208,50 @@ def fig_results(result, out: Path):
     fig.tight_layout(); fig.savefig(out, dpi=130); plt.close(fig)
 
 
-def write_figures(run_dir: Path, key_path: Path):
+def fig_repair(result, out: Path):
+    """Flipped and removed AUC per model: original vs each LLM repair attempt vs baseline."""
+    from .score import REPAIR_FLIP_MIN
+    pm, rows = result["per_model"], result["rows"]
+    mids = sorted(pm, key=lambda m: (pm[m]["variant"] != "marker", pm[m]["seed"]))
+    x = np.arange(len(mids))
+    rng = np.random.default_rng(0)
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4.2), sharey=True)
+    panels = (("auc_marker_flipped", "auc_flipped", "Marker flipped onto class 0"),
+              ("auc_marker_removed", "auc_removed", "Marker removed (blob size only)"))
+    for ax, (field, rfield, title) in zip(axes, panels):
+        for i, m in enumerate(mids):
+            ax.scatter(i - 0.25, pm[m]["original"][field], marker="s", s=55, color=INK2, zorder=3)
+            ax.scatter(i + 0.25, pm[m]["baseline"][field], marker="D", s=50, color=ACCENT2, zorder=3,
+                       ec=SURFACE)
+            for r in (r for r in rows if r["model_id"] == m):
+                ax.scatter(i + rng.uniform(-0.08, 0.08), r[rfield], s=50, zorder=4, ec=SURFACE, lw=1.2,
+                           color=MAIN if r["ok"] else ACCENT)
+        if field == "auc_marker_flipped":
+            ax.axhline(REPAIR_FLIP_MIN, color=INK2, lw=1, ls="--")
+            ax.text(len(mids) - 0.5, REPAIR_FLIP_MIN + 0.01, "repair threshold", color=INK2, fontsize=8,
+                    ha="right", va="bottom")
+        ax.axhline(0.5, color=GRID, lw=1)
+        ax.set_xticks(x, [f"{m.removeprefix('rmw-toy-')}\n{pm[m]['variant']} s{pm[m]['seed']}" for m in mids],
+                      fontsize=8)
+        ax.set_title(title)
+        ax.set_ylim(0, 1.05)
+    axes[0].set_ylabel("test AUC")
+    for c, mk, lab in ((INK2, "s", "original model"), (MAIN, "o", "LLM edit: criterion met"),
+                       (ACCENT, "o", "LLM edit: criterion not met"), (ACCENT2, "D", "data-free baseline edit")):
+        axes[0].scatter([], [], color=c, marker=mk, s=50, label=lab)
+    fig.legend(loc="lower center", ncol=4, fontsize=8, bbox_to_anchor=(0.5, -0.01))
+    fig.suptitle("Repair: does the model still work when the marker is flipped? (criterion: repaired for "
+                 "marker models, unharmed for controls)", fontsize=10)
+    fig.tight_layout(rect=(0, 0.06, 1, 1)); fig.savefig(out, dpi=130); plt.close(fig)
+
+
+def write_figures(run_dir: Path, key_path: Path, examples=None, partial_label=None, spectral=False):
     """Regenerate every figure available for the current stage."""
     run_dir = Path(run_dir)
     figs = run_dir / "figures"
     figs.mkdir(parents=True, exist_ok=True)
     zoo_dir = run_dir / "zoo"
-    fig_examples(figs / "examples.png")
+    (examples or fig_examples)(figs / "examples.png")
     if not key_path.exists():
         return
     key = json.loads(key_path.read_text())
@@ -209,6 +263,12 @@ def write_figures(run_dir: Path, key_path: Path):
         fig_weights(mid, w, figs / f"weights_{variant}.png",
                     f"First-layer weights, {variant} model {mid} (seed {info['seed']})")
     fig_energy_all(key, zoo_dir, figs / "energy_baseline.png")
+    if spectral:
+        fig_spectral_all(key, zoo_dir, figs / "spectral_baseline.png")
     score_path = run_dir / "scores.json"
     if score_path.exists():
-        fig_results(json.loads(score_path.read_text()), figs / "results.png")
+        fig_results(json.loads(score_path.read_text()), figs / "results.png",
+                    **({"partial_label": partial_label} if partial_label else {}))
+    repair_path = run_dir / "repair_scores.json"
+    if repair_path.exists():
+        fig_repair(json.loads(repair_path.read_text()), figs / "repair.png")

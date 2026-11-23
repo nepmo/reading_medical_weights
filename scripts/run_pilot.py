@@ -6,6 +6,9 @@ Stages (run in order):
   tokens     exact token counts via the API (needs ANTHROPIC_API_KEY in .env)
   audit      5 fresh audits per model (add --dry-run to only write request bodies)
   score      blind grading, then join with key
+  repair     5 fresh repair requests per model: LLM returns weight edits (--dry-run as above)
+  repair-eval  apply edits, run the flipped-marker check on the test split (no key)
+  repair-score join with the key, apply PROTOCOL.md section B5 criteria
   report     regenerate figures in runs/pilot/figures/ (also runs after every other stage)
 """
 
@@ -18,6 +21,8 @@ RUN = ROOT / "runs" / "pilot"
 ZOO = RUN / "zoo"
 SER = RUN / "serialized"
 AUD = RUN / "audits"
+REP = RUN / "repairs"
+REPAIRED = RUN / "repaired"
 KEY = ROOT / "keys" / "pilot_key.json"
 ATTEMPTS = 5
 
@@ -76,6 +81,35 @@ def stage_score(args):
     print(f"marker found (score >= 2): {result['find_rate']:.0%}, shortcut claimed on controls: {result['fp_rate']:.0%}")
 
 
+def stage_repair(args):
+    from rmw.audit import make_client
+    from rmw.repair import repair_model
+    ids = json.loads((ZOO / "to_audit.json").read_text())
+    if args.only:
+        ids = [i for i in ids if i in args.only]
+    client = None if args.dry_run else make_client()
+    attempts = args.attempts or ATTEMPTS
+    for mid in ids:
+        out = repair_model(mid, SER / f"{mid}.txt", REP, attempts, dry_run=args.dry_run, client=client)
+        for p in out:
+            d = None if args.dry_run else json.loads(p.read_text())
+            print(p.name, "" if d is None else d["status"])
+
+
+def stage_repair_eval(args):
+    from rmw.repair_eval import evaluate
+    result = evaluate(ZOO, REP, REPAIRED)
+    (RUN / "repair_eval.json").write_text(json.dumps(result, indent=1))
+
+
+def stage_repair_score(args):
+    from rmw.score import score_repair
+    r = score_repair(RUN / "repair_eval.json", KEY)
+    (RUN / "repair_scores.json").write_text(json.dumps(r, indent=1))
+    print(f"marker models repaired: {r['repair_rate']:.0%}, controls unharmed: "
+          f"{r['control_unharmed_rate']:.0%}, false repairs on controls: {r['false_repair_rate']:.0%}")
+
+
 def stage_report(args):
     from rmw.report import write_figures
     write_figures(RUN, KEY)
@@ -83,14 +117,16 @@ def stage_report(args):
 
 
 STAGES = {"zoo": stage_zoo, "serialize": stage_serialize, "tokens": stage_tokens,
-          "audit": stage_audit, "score": stage_score, "report": stage_report}
+          "audit": stage_audit, "score": stage_score, "repair": stage_repair,
+          "repair-eval": stage_repair_eval, "repair-score": stage_repair_score,
+          "report": stage_report}
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("stage", choices=STAGES)
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--force", action="store_true")
-    ap.add_argument("--only", nargs="*", help="model IDs to audit")
+    ap.add_argument("--only", nargs="*", help="model IDs to audit / repair")
     ap.add_argument("--attempts", type=int, help=f"audits per model (default {ATTEMPTS})")
     a = ap.parse_args()
     STAGES[a.stage](a)

@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 import torch
 
-from rmw import audit, baselines, invariance, score, serialize
+from rmw import audit, baselines, invariance, repair, score, serialize
 from rmw.model import logits, make_mlp, n_params, state_from_numpy, weights_numpy
 from rmw.pilot_data import MARKER_COLS, MARKER_ROWS, make_blobs, plant_marker
 
@@ -129,3 +129,123 @@ def test_energy_baseline_flags_planted_corner():
     W1.reshape(32, 24, 24)[:, 1:4, 1:4] += 0.2
     pk = baselines.peripheral_peak(baselines.energy_map(W1))
     assert pk["flag"] and pk["row"] <= 2 and pk["col"] <= 2
+
+
+# --- repair (PROTOCOL.md section B) -------------------------------------------
+
+def _edit(**kw):
+    e = dict(tensor="W1", op="set", value=0, unit_start=-1, unit_end=-1,
+             row_start=1, row_end=3, col_start=1, col_end=3, reason="r")
+    e.update(kw)
+    return e
+
+
+def test_audit_request_unchanged_by_schema_param():
+    # The pilot audits were sent with this exact request; the refactor must not change it.
+    assert audit.build_request("AAA") == audit.build_request("AAA", "toy_audit_v1", audit.AUDIT_SCHEMA)
+    assert audit.request_hash(audit.build_request("AAA")) == audit.request_hash(
+        audit.build_request("AAA", schema=audit.AUDIT_SCHEMA))
+
+
+def test_apply_edits_zero_corner_changes_only_that_region():
+    w = _w()
+    w2, n = repair.apply_edits(w, [_edit()])
+    g = w2["W1"].reshape(32, 24, 24)
+    assert np.all(g[:, 1:4, 1:4] == 0)
+    mask = np.zeros((32, 24, 24), bool); mask[:, 1:4, 1:4] = True
+    assert np.array_equal(g[~mask], w["W1"].reshape(32, 24, 24)[~mask])
+    assert n == 32 * 9
+    for k in ("b1", "W2", "b2", "W3", "b3"):
+        assert np.array_equal(w2[k], w[k])
+    assert w["W1"].reshape(32, 24, 24)[0, 1, 1] != 0      # original untouched
+
+
+def test_apply_edits_ops_and_units():
+    w = _w()
+    s = repair.serialization_scales(w)
+    w2, _ = repair.apply_edits(w, [
+        _edit(op="scale", value=0.5, unit_start=2, unit_end=3, row_start=-1, row_end=-1,
+              col_start=-1, col_end=-1),
+        _edit(tensor="W2", op="add", value=10, unit_start=0, unit_end=0, row_start=-1, row_end=-1,
+              col_start=5, col_end=5),
+        _edit(tensor="b3", op="set", value=-7, unit_start=-1, unit_end=-1),
+    ])
+    assert np.allclose(w2["W1"][2:4], w["W1"][2:4] * 0.5)
+    assert np.array_equal(w2["W1"][4:], w["W1"][4:])
+    assert np.isclose(w2["W2"][0, 5], w["W2"][0, 5] + 10 * s["W2"])
+    assert np.isclose(w2["W2"][1, 5], w["W2"][1, 5])
+    assert np.isclose(w2["b3"][0], -7 * s["b3"])
+    assert repair.apply_edits(w, [])[1] == 0
+
+
+@pytest.mark.parametrize("bad", [
+    dict(row_end=24), dict(unit_start=-1, unit_end=5), dict(row_start=3, row_end=1),
+    dict(tensor="W4"), dict(op="mul"), dict(value=float("nan")),
+    dict(tensor="W3", unit_start=1, unit_end=1), dict(tensor="W2", col_start=0, col_end=32),
+])
+def test_validate_rejects_bad_edits(bad):
+    assert repair.validate_edits([_edit(**bad)]) is not None
+    with pytest.raises(ValueError):
+        repair.apply_edits(_w(), [_edit(**bad)])
+
+
+def test_validate_limits():
+    assert repair.validate_edits([_edit()] * 200) is None
+    assert repair.validate_edits([_edit()] * 201) is not None
+    assert repair.validate_answer({"edits": []}) is None
+
+
+def test_repair_request_blind_and_never_opens_keys(tmp_path, monkeypatch):
+    real_open = builtins.open
+
+    def guarded(file, *a, **k):
+        assert "keys" not in Path(str(file)).parts, f"blinding violation: opened {file}"
+        return real_open(file, *a, **k)
+
+    monkeypatch.setattr(builtins, "open", guarded)
+    p = tmp_path / "m.txt"
+    p.write_text(serialize.serialize_v1(_w()))
+    repair.repair_model("rmw-toy-abc123", p, tmp_path / "out", attempts=5, dry_run=True)
+    body = json.loads((tmp_path / "out" / "rmw-toy-abc123.request.json").read_text())
+    text = body["messages"][0]["content"].lower()
+    assert "rmw-toy" not in text
+    for bad in ("marker", "corner", "top-left", "top left", "flip"):
+        assert bad not in text
+    assert body["output_config"]["format"]["schema"] == repair.REPAIR_SCHEMA
+
+
+def test_run_one_retries_invalid_answer():
+    class Msg:
+        def __init__(self, text):
+            self.content = [type("B", (), {"type": "text", "text": text})()]
+            self.stop_reason, self.stop_details, self.id, self.model = "end_turn", None, "m", "x"
+            self.usage = type("U", (), {"model_dump": lambda self: {}})()
+
+    answers = iter([json.dumps({"edits": [_edit(row_end=99)]}), json.dumps({"edits": []})])
+    orig = audit._call
+    audit._call = lambda client, req: Msg(next(answers))
+    try:
+        r = audit.run_one(None, {}, validate=repair.validate_answer)
+    finally:
+        audit._call = orig
+    assert r["status"] == "ok" and [t["status"] for t in r["tries"]] == ["invalid", "ok"]
+
+
+def test_score_repair(tmp_path):
+    chk = lambda f, r: {"auc_marker_on_class1": 1.0, "auc_marker_removed": r, "auc_marker_flipped": f}
+    ev = {"models": {
+        "rmw-toy-m": {"original": chk(0.3, 0.92), "quantized": chk(0.3, 0.92), "baseline": chk(0.9, 0.92),
+                      "attempts": [dict(attempt=0, status="ok", failed=False, shortcut_present=True,
+                                        confidence=0.9, n_edits=1, n_changed=9, check=chk(0.9, 0.91)),
+                                   dict(attempt=1, status="ok", failed=False, shortcut_present=True,
+                                        confidence=0.9, n_edits=1, n_changed=9, check=chk(0.9, 0.80))]},
+        "rmw-toy-c": {"original": chk(0.94, 0.92), "quantized": chk(0.94, 0.92), "baseline": chk(0.94, 0.92),
+                      "attempts": [dict(attempt=0, status="ok", failed=False, shortcut_present=False,
+                                        confidence=0.1, n_edits=0, n_changed=0, check=chk(0.94, 0.92))]}}}
+    ep = tmp_path / "ev.json"; ep.write_text(json.dumps(ev))
+    kp = tmp_path / "key.json"
+    kp.write_text(json.dumps({"models": {"rmw-toy-m": {"variant": "marker", "seed": 0},
+                                         "rmw-toy-c": {"variant": "control", "seed": 0}}}))
+    r = score.score_repair(ep, kp)
+    assert r["repair_rate"] == 0.5 and r["control_unharmed_rate"] == 1.0 and r["false_repair_rate"] == 0.0
+    assert r["per_model"]["rmw-toy-m"]["baseline_ok"]

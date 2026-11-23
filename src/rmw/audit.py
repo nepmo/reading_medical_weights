@@ -51,7 +51,8 @@ def load_prompt(name: str = "toy_audit_v1") -> tuple[str, str]:
     return system, user
 
 
-def build_request(weights_text: str, prompt_name: str = "toy_audit_v1") -> dict:
+def build_request(weights_text: str, prompt_name: str = "toy_audit_v1",
+                  schema: dict = AUDIT_SCHEMA) -> dict:
     system, user = load_prompt(prompt_name)
     return {
         "model": AUDITOR_MODEL,
@@ -60,7 +61,7 @@ def build_request(weights_text: str, prompt_name: str = "toy_audit_v1") -> dict:
         "messages": [{"role": "user", "content": user.replace("{WEIGHTS}", weights_text.rstrip("\n"))}],
         "thinking": {"type": "adaptive"},
         "output_config": {"effort": EFFORT,
-                          "format": {"type": "json_schema", "schema": AUDIT_SCHEMA}},
+                          "format": {"type": "json_schema", "schema": schema}},
     }
 
 
@@ -89,9 +90,12 @@ def _call(client, req: dict):
         return stream.get_final_message()
 
 
-def run_one(client, req: dict) -> dict:
+def run_one(client, req: dict, validate=None) -> dict:
     """One audit attempt with bounded retries. Returns a record (never raises on
-    model-side failure; raises on missing credentials)."""
+    model-side failure; raises on missing credentials).
+
+    validate: optional callable(answer) -> error string or None. An answer it
+    rejects counts as status "invalid" and is retried like an unparseable one."""
     import anthropic
     tries = []
     for k in range(1 + MAX_RETRIES_PER_ATTEMPT):
@@ -125,6 +129,12 @@ def run_one(client, req: dict) -> dict:
             rec.update(status="unparseable", error=str(e))
             tries.append(rec)
             continue
+        err = validate(rec["answer"]) if validate else None
+        if err:
+            rec.update(status="invalid", error=err)
+            rec["rejected_answer"] = rec.pop("answer")
+            tries.append(rec)
+            continue
         tries.append(rec)
         break
     final = tries[-1]
@@ -132,11 +142,12 @@ def run_one(client, req: dict) -> dict:
 
 
 def audit_model(model_id: str, weights_path: Path, out_dir: Path, attempts: int,
-                dry_run: bool = False, client=None, prompt_name: str = "toy_audit_v1") -> list[Path]:
+                dry_run: bool = False, client=None, prompt_name: str = "toy_audit_v1",
+                schema: dict = AUDIT_SCHEMA, validate=None) -> list[Path]:
     """Run `attempts` fresh audits of one serialized model. Skips attempts whose
     output file already exists (so an interrupted run can resume)."""
     weights_text = Path(weights_path).read_text()
-    req = build_request(weights_text, prompt_name)
+    req = build_request(weights_text, prompt_name, schema)
     out_dir.mkdir(parents=True, exist_ok=True)
     written = []
     if dry_run:
@@ -147,7 +158,7 @@ def audit_model(model_id: str, weights_path: Path, out_dir: Path, attempts: int,
         p = out_dir / f"{model_id}_a{a}.json"
         if p.exists():
             continue
-        result = run_one(client, req)
+        result = run_one(client, req, validate)
         result.update(model_id=model_id, attempt=a, prompt=prompt_name,
                       request_sha256=request_hash(req),
                       finished=datetime.now(timezone.utc).isoformat())

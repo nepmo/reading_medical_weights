@@ -72,7 +72,34 @@ As a reference, a simple data-free check was run on the same weights. It adds up
 
 This confirms that the planted marker is plainly visible in the weights, so the pilot run is a fair check of whether the LLM can read it. On this task the baseline gets 6/6 models right, against 5/6 for the LLM by majority vote. That is expected for a bright square in an otherwise empty corner, which is exactly what an energy map looks for. The baseline can only point at a hot spot, though; the LLM also said what the spot does (pushes towards "large blob") and how the rest of the network separates blob sizes. The CT ladder will show how both hold up on shortcuts that don't sit in an empty corner.
 
-## 6. Reproduce
+## 6. Repair: can Claude also edit the shortcut out?
+
+After the audit, a second question: given the same weights, can Claude **remove** the shortcut by editing them, so that the model still gets the answer right when the square is moved to the small blobs? All settings (prompt, edit format, test, success criteria) are recorded in [PROTOCOL.md](../PROTOCOL.md), section B, written before any request was sent.
+
+**Setup.** The same 6 models and the same serialized weights got a new prompt ([prompts/toy_repair_v1.md](../prompts/toy_repair_v1.md)). Like the audit prompt, it is identical for marker and control models and never mentions markers, corners or locations. It asks: if the model relies on a shortcut, return weight edits that remove it while keeping blob-size performance; otherwise return no edits. Edits are a JSON list of operations (`set` / `add` / `scale` on a range of units, rows and columns of one tensor), which our code applies to the original float weights. Each model got 5 fresh single-turn requests, 30 in total. The edited model is then tested with the square **flipped** onto class 0.
+
+**Criteria (set beforehand).**
+- A marker model counts as *repaired* if its flipped AUC is ≥ 0.85 and its AUC without the square drops by no more than 0.03.
+- A control counts as *unharmed* if its AUC without the square drops by no more than 0.03.
+- Any edit at all on a control is counted separately as a *false repair*.
+
+| | result |
+|---|---|
+| Marker models repaired (flipped AUC 0.30–0.37 → 0.91–0.92) | **15 / 15** |
+| Controls unharmed | **15 / 15** |
+| Controls left untouched (no edits) | **8 / 15** (7 false repairs) |
+
+![repair](../runs/pilot/figures/repair.png)
+
+**Marker models.** All 15 answers made the same single edit: set the first-layer weights at rows 1–3, cols 1–3 to zero in all 32 units, which is exactly the 3×3 marker (288 of 19,009 weights). Afterwards the square has no effect at all: AUC is the same with the square on class 1, removed, or flipped (0.920, 0.920, 0.908 for the three seeds). Blob-size performance is unchanged for two seeds and drops from 0.919 to 0.908 for the third, within the allowed 0.03.
+
+**Controls.** No edit harmed a control: AUC without the square stayed within 0.012 of the original. But 7 of 15 answers edited a control anyway: `rmw-toy-49ca9a` 4/5 (the same control most often flagged in the audit), `rmw-toy-436cc6` 2/5, `rmw-toy-fba220` 1/5. These edits ranged from silencing one layer-1 unit (16 weights) to flattening the background of many units (up to 6,048 weights). As in the audit, confidence separated the two cases: 0.60–0.75 on every edited control and 0.93–0.95 on every marker model.
+
+**Reference.** The data-free baseline repair (zero the 3×3 window the energy map flags) makes the identical edit on the marker models, gives the identical numbers, and leaves all controls alone. So on this blatant marker, repairing is no harder than finding: once the corner is located, zeroing it is the obvious fix. Repair becomes a real test only on shortcuts that don't sit in their own pixels (rungs 3–4), where a simple zeroing edit won't exist.
+
+All 30 requests returned valid answers on the first try (median 18 s, 7–248 s; 1.54M input and 226k output tokens in total). Raw answers are in [runs/pilot/repairs/](../runs/pilot/repairs/), the evaluation in [runs/pilot/repair_eval.json](../runs/pilot/repair_eval.json) and the scores in [runs/pilot/repair_scores.json](../runs/pilot/repair_scores.json).
+
+## 7. Reproduce
 
 ```bash
 python -m venv .venv
@@ -85,6 +112,9 @@ python -m venv .venv
 echo "ANTHROPIC_API_KEY=..." > .env
 .venv/bin/python scripts/run_pilot.py audit      # 30 audits (about $8)
 .venv/bin/python scripts/run_pilot.py score      # scoring + figures
+.venv/bin/python scripts/run_pilot.py repair       # 30 repair requests
+.venv/bin/python scripts/run_pilot.py repair-eval  # apply edits, test with the marker flipped
+.venv/bin/python scripts/run_pilot.py repair-score # criteria + figure
 ```
 
 Raw audit answers are in [runs/pilot/audits/](../runs/pilot/audits/) and the scores in [runs/pilot/scores.json](../runs/pilot/scores.json).

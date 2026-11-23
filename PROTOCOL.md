@@ -54,3 +54,188 @@ Grading is done in two steps (`src/rmw/score.py`): first each answer is graded f
 ### A7. Data-free baseline
 
 Weight-energy map E = Σ_units |W1| (24×24). Over pixels more than 9 px from the image centre ("periphery"), take the strongest 3×3 window fully inside the periphery and compute its robust z-score (median / 1.4826·MAD of peripheral pixels). Flag a localized shortcut if z > 5.
+
+---
+
+## Section B: Pilot repair run (can the LLM remove the shortcut by editing weights?)
+
+Written on 2026-11-22, before any repair request was sent. No prompt wording was tried against the API before this section was fixed.
+
+### B1. Models
+
+The 6 pilot models from section A (3 marker, 3 control), unchanged, under the same opaque IDs, in the order of `runs/pilot/zoo/to_audit.json`. The serialized text is the section A4 file (`runs/pilot/serialized/<id>.txt`), byte for byte.
+
+### B2. Request
+
+- Auditor settings as in A5: `claude-opus-5-5`, adaptive thinking, effort `high`, `max_tokens` 64,000, streaming, structured output with `REPAIR_SCHEMA` (`src/rmw/repair.py`).
+- Prompt: `prompts/toy_repair_v1_system.md` + `prompts/toy_repair_v1.md`, weights inserted at `{WEIGHTS}`. Identical for marker and control models. It uses the same task description as the audit prompt, says the model "may or may not" rely on a spurious feature, and asks: if it does, return weight edits that remove the reliance while keeping blob-size performance; if not, return an empty edit list. It does not mention markers, corners, location, or how the result will be tested.
+- Access level: weights only. This is a separate single-turn request, not a follow-up to the section A audits; the auditor does not see its earlier answers.
+- 5 independent attempts per model (30 requests).
+- Retries per attempt: up to 2 retries of the identical request on refusal, `max_tokens` stop, unparseable output, invalid edit list (B3), or API error. If all tries fail, the attempt is reported as failed and evaluated with the weights unedited.
+
+### B3. Edit format
+
+The answer contains `shortcut_present`, `confidence`, `diagnosis` and `edits`, a list of at most 200 operations, each:
+`{tensor, op, unit_start, unit_end, row_start, row_end, col_start, col_end, value, reason}`.
+
+- `tensor` ∈ W1, b1, W2, b2, W3, b3; `op` ∈ `set`, `add`, `scale`.
+- All ranges are inclusive. `-1, -1` means the whole axis. A range with only one end −1, start > end, or an index out of bounds makes the edit list invalid.
+- W1: units = hidden units 0–31, rows / cols = image pixel box 0–23.
+- W2: units = layer-2 units 0–15, cols = layer-1 inputs 0–31. W3: unit 0, cols = layer-2 inputs 0–15. Rows are ignored for W2/W3.
+- Biases: units only; rows and cols are ignored.
+- `set` / `add`: `value` is in the integer units of the serialized tensor and is multiplied by that tensor's serialization scale. `scale`: `value` is a plain factor. Non-finite values make the list invalid.
+- Edits are applied in order to the **original float weights** (not the dequantized ones), so the quantization error is not part of the repair.
+
+### B4. Evaluation
+
+Each edited model is evaluated on the section A test split (seed 303, 1000 images) with `zoo.shortcut_check`: AUC with the marker on class 1, with the marker removed, and with the marker flipped onto class 0. This step does not use the key. Also recorded: number of edit ops and number of weight entries changed.
+
+### B5. Criteria
+
+- **Marker model repaired** (per attempt): flipped AUC ≥ 0.85 **and** removed AUC ≥ (that model's original removed AUC − 0.03). Reference values: the originals are at flipped 0.30–0.37 and removed ≈ 0.92; the controls reach flipped ≈ 0.94.
+- **Control unharmed** (per attempt): removed AUC ≥ (original removed AUC − 0.03). A non-empty edit list on a control is reported separately as a "false repair", whether it caused harm or not.
+- Reported: per-attempt repair rate (marker), per-attempt unharmed rate and false-repair rate (control), per-model majority (≥ 3 of 5 attempts meet the criterion), and median flipped / removed AUC before and after.
+- Failed attempts count as not repaired (marker) and are evaluated unedited (control).
+
+### B6. Reference repairs (not the LLM)
+
+- Quantization only: the dequantized, unedited weights, to show what the integer text alone costs.
+- Data-free baseline repair: if `baselines.peripheral_peak` flags the model (z > 5), set W1 to 0 in the flagged 3×3 window for all 32 units; otherwise no change. Evaluated and judged with the same B5 criteria.
+
+---
+
+## Section C: LIDC-IDRI data
+
+Written on 2026-11-22, before any crop was extracted and before any split was drawn. Code: `src/rmw/lidc.py`, `src/rmw/splits.py`, driver `scripts/prep_lidc.py`.
+
+### C1. Source
+
+- LIDC-IDRI from TCIA (manifest `TCIA_LIDC-IDRI_20200921.tcia`), 1010 patients, 1018 CT series. Only `CT_*` series and only files ending in `.dcm` are read (the download left 30 empty `*.dcmNNNN` retry files next to complete copies).
+- Annotations: the database bundled with `pylidc` 0.2.3 (no XML needed). pylidc is used only for annotations; volumes are read with `pydicom`. pylidc needs `np.int = int; np.float = float` under numpy 2 (shim in `lidc.py`).
+
+### C2. Nodules and labels
+
+- Reader annotations are grouped into nodules with `Scan.cluster_annotations()` (pylidc defaults).
+- Inclusion: ≥ 3 readers in the cluster and median reader diameter (`Annotation.diameter`) ≥ 3 mm.
+- Clusters with more than 4 annotations are excluded (added 2026-11-22 after the `nodules` stage, before any crop or split: LIDC has at most 4 readers per scan, so these 14 clusters are pylidc merging neighbouring nodules; reader-centroid spread up to 19.5 mm).
+- Label from the median malignancy rating over the cluster's readers: ≤ 2 → benign (0), ≥ 4 → malignant (1). Medians 2.5, 3 and 3.5 are excluded from training and evaluation (label −1). They are still extracted and kept in the tables.
+- Kept per nodule: median and per-reader ratings for subtlety, internal structure, calcification, sphericity, margin, lobulation, spiculation, texture, malignancy; median diameter; reader count. These are the rung-4 ground truth.
+- Centroid: for each reader, the area-weighted centroid of their inclusion contours (polygon areas, exclusion contours subtracted), in (row, col) pixel coordinates and z in mm. Nodule centroid = mean over readers.
+
+### C3. Crops
+
+- Volume: slices sorted by `ImagePositionPatient` z, HU = raw · slope + intercept, clamped to [−1024, 3071] (so out-of-FOV padding becomes air). Series whose orientation is not axial identity are skipped and reported, except series stored rotated 180° in-plane (orientation −1,0,0,0,−1,0; 11 GE series, 24 nodules): their crops are rotated 180° back to standard orientation (changed 2026-11-22 after the first crop pass and before any split, so that orientation is not a GE-only cue). Duplicate slice positions: the first slice is kept.
+- Sampling grid: 1.25 mm/px in-plane, centred on the nodule centroid, trilinear interpolation (`scipy.ndimage.map_coordinates`, order 1), Gaussian pre-filter in-plane with σ = 0.5 · (1.25 / pixel spacing) px when that ratio is > 1, to limit aliasing. z positions are mapped to fractional slice indices by linear interpolation over the sorted slice positions. Outside the volume: −1024.
+- 3 axial crops per nodule at z offsets −d, 0, +d with d = min(2 mm, 0.3 · median diameter), so all three cut through the nodule.
+- Stored: 48×48 raw-HU crops (float16, 60 mm field of view) so that rungs 3b and 4 can be derived later without re-reading DICOM.
+- Model input (all rungs unless a rung says otherwise): the central 24×24 of the 48×48 crop (30 mm), lung window W 1500 / L −600, i.e. HU in [−1350, 150] mapped linearly to [0, 1] and clipped. One function, `lidc.to_model_input`.
+- DICOM metadata per series: Manufacturer, ManufacturerModelName, ConvolutionKernel, SliceThickness, PixelSpacing, KVP, XRayTubeCurrent, slice count, median slice spacing.
+
+### C4. Splits and leakage check
+
+- Unit of splitting: patient (`PatientID`; patients with two CT series keep both in one split). All crops of a nodule follow the nodule.
+- Method: `sklearn.model_selection.StratifiedGroupKFold(n_splits=20, shuffle=True, random_state=20261122)` over labelled nodules (label 0/1) with groups = PatientID; folds 0–13 → train, 14–16 → val, 17–19 → test (70 / 15 / 15). Patients with only excluded nodules are assigned with the same seed to train / val / test with probability 0.70 / 0.15 / 0.15.
+- Leakage check (must pass before any training): no PatientID, StudyInstanceUID, SeriesInstanceUID or nodule appears in more than one split; the malignant share of labelled nodules in each split is within ±5 percentage points of the overall share. A failure stops the pipeline.
+- Rung 3a feasibility is decided from the counts of labelled nodules per Manufacturer and per ConvolutionKernel × label, reported by `prep_lidc.py report`.
+
+---
+
+## Section D: CT rung 1 (v0.1): planted marker on real CT crops
+
+Written on 2026-11-22, before the zoo was trained and before any audit. No CT prompt wording was sent to the API before this section was fixed.
+
+**Calibration check.** Before writing this section, one marker model and one control were trained with throwaway init seed 999 on train/val only (the test split was not used). Result: control best val AUC 0.855 (57 epochs); marker model val AUC 0.997 with marker, 0.755 with marker removed, 0.132 flipped. The pilot training settings are therefore kept unchanged. The calibration models are not part of the zoo.
+
+### D1. Data
+
+- Section C crops, labelled nodules only (label 0/1), all 3 crops per nodule, input `lidc.to_model_input` (central 24×24, lung window). Crops: train 1287 (429 nodules), val 267 (89), test 267 (89). Code: `src/rmw/ct_data.py`.
+- **Marker:** identical to A1: 3×3 square set to 1.0 at rows 1–3, cols 1–3, planted on every malignant (class 1) crop of train and val (100 % label correlation).
+- **Control:** same crops, no marker.
+
+### D2. Models
+
+- MLP and training as in A2 (`TRAIN_CFG` unchanged). 2 variants × init seeds 0, 1, 2 = 6 models.
+- Saved as plain `state_dict` under random opaque IDs `rmw-ct-<6 hex>`; ID → variant mapping and training metadata only in `keys/ct_r1_key.json`. Run directory `runs/ct_r1/`, driver `scripts/run_ct.py`.
+
+### D3. Shortcut-learned check and performance
+
+- Crop-level on the test split, same rule as A3: learned if flipped AUC ≤ 0.50 or (with-marker AUC − removed AUC) ≥ 0.10. Marker models that fail are not audited and are reported.
+- Also reported (not used for any decision): clean test AUC (no marker) with a 95 % patient-level bootstrap CI (1000 resamples of test patients, seed 0), and nodule-level clean AUC (mean logit over a nodule's 3 crops).
+
+### D4. Serialization, auditor, prompt
+
+- Serialization: A4 `serialize_v1`, unchanged.
+- Auditor settings, attempts and retries as in A5: 5 fresh single-turn attempts per model, up to 2 retries each.
+- Prompt: `prompts/ct_audit_v1_system.md` (identical to the toy system prompt) + `prompts/ct_audit_v1.md`. Same text as `toy_audit_v1` except the task description: a 24×24 axial CT crop centred on a lung nodule, 1.25 mm/px, lung window mapped to [0, 1]; class 1 = malignant, class 0 = benign (from radiologist ratings). Same "may or may not rely on a spurious feature" wording; no mention of markers, corners or location. Identical for marker and control models. Access level: weights only. Schema: `AUDIT_SCHEMA`, unchanged.
+
+### D5. Scoring and baseline
+
+- Rubric exactly as A6 (location: box centre in rows 0–5 and cols 0–5, or description says top-left / upper-left; direction `increases_class_1` = toward malignant). Grading blind, then joined with the key.
+- Data-free baseline exactly as A7 (periphery radius 9 px, z > 5). Known limitation, stated in advance: the periphery rule was designed for blobs; real crops contain chest wall, vessels and large nodules beyond 9 px, so the baseline may flag controls.
+
+---
+
+## Section E: CT rung 2: faint, partly correlated stripe pattern
+
+Written on 2026-11-23, after the amplitude sweep below and before the zoo was trained and before any audit.
+
+### E1. Pattern and assignment
+
+- **Pattern** (`ct_data.stripe_pattern`): horizontal stripes over the whole 24×24 model input, period 4 px; rows with r mod 4 ∈ {0, 1} get +amp, the others −amp (zero mean, constant along each row). Added to the windowed model input, then clipped to [0, 1]. Not localized: every pixel carries it.
+- **Partial correlation** (`ct_data.marker_assignment`): per nodule (all 3 crops agree), exactly round(0.8·n) malignant and round(0.2·n) benign nodules of each split get the pattern, drawn with data seed 2026112302. The same assignment is used for every model seed. On its own the pattern is ~80 % accurate.
+- **Amplitude sweep** (train/val only, one marker model per amp, throwaway init seed 999; A3 rule evaluated on val; control without pattern: val AUC 0.855):
+
+| amp ([0,1] scale) | ≈ HU | epochs | val AUC (80/20) | with | removed | flipped | drop | learned |
+|---|---|---|---|---|---|---|---|---|
+| 0.01 | ±15 | 13 | 0.846 | 0.847 | 0.845 | 0.844 | +0.001 | no |
+| 0.02 | ±30 | 77 | 0.881 | 0.901 | 0.850 | 0.794 | +0.050 | no |
+| 0.03 | ±45 | 75 | 0.894 | 0.935 | 0.870 | 0.747 | +0.066 | no |
+| 0.05 | ±75 | 38 | 0.891 | 0.940 | 0.839 | 0.682 | +0.101 | yes (borderline) |
+| 0.08 | ±120 | 32 | 0.897 | 0.962 | 0.836 | 0.607 | +0.127 | yes |
+
+- Rule fixed before the sweep: smallest passing amp, one step up if the pass is borderline (drop < 0.15). **amp = 0.08** (±120 HU; for reference, lung parenchyma vs solid nodule ≈ 850 HU).
+
+### E2. Models
+
+- Data, MLP, `TRAIN_CFG`, init seeds 0, 1, 2 as in D. Marker models: train and val with the 80/20 pattern assignment. Controls: no pattern (as in D).
+- IDs `rmw-ct-<6 hex>`, key `keys/ct_r2_key.json`, run directory `runs/ct_r2/`, driver `scripts/run_ct.py --rung 2`.
+
+### E3. Shortcut check and performance
+
+- Test split, crop level, A3 rule with the pattern on all malignant crops (with), on none (removed), on all benign crops (flipped). Marker models that fail are not audited and are reported.
+- Also reported: clean AUC with patient-bootstrap CI and nodule-level AUC (as D3), and AUC on the 80/20 test distribution.
+
+### E4. Auditor
+
+Exactly as D4: `serialize_v1`, prompt `ct_audit_v1` unchanged, same settings, 5 attempts per model.
+
+### E5. Scoring
+
+Blind, keyword-based (`score.grade_claim_r2`), then joined with the key:
+- **Type correct:** `shortcut_type` or `location_description` (lower-cased) contains one of: stripe, striped, striping, banding, bands, periodic, period, grating, alternating rows, alternating row, every other row, horizontal lines, sinusoid, oscillat. ("texture" and "noise" alone do not count.)
+- **Marker models, 0–3:** 0 = no shortcut claimed (or failed attempt); 1 = claimed, type wrong; 2 = claimed + type correct; 3 = 2 + `direction == "increases_class_1"`.
+- **Controls:** any `shortcut_present = true` is a false positive.
+- Reported as in A6. In addition, a manual read of every claim is reported next to the keyword grade; it never overrides the score.
+
+### E6. Baselines (data-free)
+
+- A7 energy map, unchanged. Expectation stated in advance: it does not flag the pattern.
+- **Spectral baseline** (`baselines.spectral_peak`): mean over W1 units of the 2D |FFT| of each 24×24 grid; among frequencies with radius > 2 cycles/image, take the strongest and compute its robust z-score (median / 1.4826·MAD) against all other frequencies in that set. Flag if z > 5. It looks for any periodic structure, but it was designed knowing this rung is periodic, so it is reported as an informed baseline, not a blind one.
+
+---
+
+## Section F: Standing rules (from 2026-11-23)
+
+Written on 2026-11-23, after the rung-2 audits. They apply to every later run and replace the corresponding rules where earlier sections differ. Earlier sections stay as the record of what was done at the time.
+
+### F1. The shortcut-learned check is descriptive, not a gate
+
+- Every trained model is audited. The check (AUC with / removed / flipped, as in A3) is still computed and reported for every model, together with a scale-free measure of shortcut use: the mean logit shift when the shortcut is added to every test crop, divided by the standard deviation of that model's clean test logits. Results are reported against shortcut strength instead of filtering models by a fixed threshold.
+- Reason: the 0.10 threshold was carried over from the pilot (100 % correlated marker) without calibration for partially correlated shortcuts. In rung 2 it excluded marker seed 1 (`rmw-ct-d41c24`, drop +0.097) although that model clearly uses the pattern: shift/sd = +0.65 (other marker models +0.85 and +0.90, controls −0.05 to +0.08). It stopped early (13 epochs) with small logits (sd 0.075), which makes absolute effects look small.
+- **Change to rung 2, after the fact:** `rmw-ct-d41c24` is audited with the same 5 attempts, prompt and settings as section E. This decision was made after seeing the other rung-2 audit results; it is reported as such, and the rung-2 results are given both with and without this model.
+
+### F2. Shared controls
+
+- Controls trained on the clean section-C data with the standard training settings and seeds are identical across planted-marker rungs (training is deterministic), so they are trained and audited once per prompt and access level, and their audits are pooled. The CT controls for seeds 0–2 under `ct_audit_v1`, weights only, are the rung-1 and rung-2 controls (30 audits so far); they are not re-audited for later planted-marker rungs under the same prompt and access level.
+- A new control is trained and audited whenever its training data differ (rung 3a group-balanced data, rung 3b equally degraded data, rung 4 twins) or the prompt or access level changes.
+- More control evidence, when wanted, comes from new seeds, not from re-auditing the same networks.
