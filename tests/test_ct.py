@@ -166,3 +166,55 @@ def test_ct_explore_strength_region_and_rows():
     prof = ex.row_profile(m, s, amp=0.1)    # inputs <= 0.5, so no clipping
     assert len(prof) == 24
     assert np.allclose(prof[1:4], 0.3, atol=1e-4) and np.allclose(prof[4:], 0.0) and prof[0] == 0.0
+
+
+def test_r2b_label_rules():
+    import pandas as pd
+    from rmw.ct_data import labels
+    nod = pd.DataFrame({"label": [0, 1, -1, -1], "malignancy_readers": ["1,2,2", "4,4,5", "3,3,4", "2,3,4"]})
+    assert labels(nod, "median_strict").tolist() == [0, 1, -1, -1]
+    assert labels(nod, "mean_binary").tolist() == [0, 1, 1, -1]
+
+
+def test_fixed_epoch_training_records_init_distance():
+    import torch
+    from rmw.train import TRAIN_CFG_V2, init_state, train_model
+    rng = np.random.default_rng(0)
+    x = rng.uniform(0, 1, (64, 24, 24)).astype(np.float32)
+    y = (x[:, :12].mean((1, 2)) > 0.5).astype(np.int64)
+    m, h = train_model(x, y, x, y, seed=3, cfg=dict(TRAIN_CFG_V2, epochs=4))
+    assert h["epochs_run"] == 4 and len(h["val_auc"]) == 4
+    assert h["init_distance"]["total"] > 0
+    s0 = init_state(3)
+    assert not torch.equal(m.state_dict()["1.weight"], s0["1.weight"])
+    score = x.mean((1, 2)) * 5
+    m, h = train_model(x, score, x, score, seed=3, cfg=dict(TRAIN_CFG_V2, epochs=3, loss="mse"))
+    assert h["epochs_run"] == 3 and len(h["val_pearson"]) == 3
+
+
+def test_ct_prompt_v2_no_hint_and_blind_dry_run(tmp_path, monkeypatch):
+    sys1, user1 = audit.load_prompt("ct_audit_v1")
+    sys2, user2 = audit.load_prompt("ct_audit_v2")
+    assert sys2 == sys1
+    low = user2.lower()
+    for word in ("marker", "corner", "square", "stripe", "periodic", "band", "texture"):
+        assert word not in low, word
+    # only the input / label description differs from v1, and it names no pattern
+    diff = [l for l in user2.splitlines() if l not in user1.splitlines()]
+    assert len(diff) == 2 and all(l.startswith("- ") for l in diff)
+    assert not any(w in l.lower() for l in diff for w in ("pattern", "horizontal", "stripe", "period"))
+    r1, r2 = audit.build_request("AAA", "ct_audit_v2"), audit.build_request("BBB", "ct_audit_v2")
+    assert r1["messages"][0]["content"].replace("AAA", "BBB") == r2["messages"][0]["content"]
+
+
+def test_r2b_rung_spec():
+    from rmw.ct_zoo import RUNG2B, R2B_AMP
+    s = _nodule_set(20)
+    s.y[:] = np.r_[np.ones(30, np.int64), np.zeros(len(s.y) - 30, np.int64)]
+    m = RUNG2B.train_marked(s)
+    assert m.marked.tolist() == marker_assignment(s).tolist()          # 80/20, G11
+    assert np.allclose(m.x[m.marked] - s.x[m.marked], stripe_pattern(R2B_AMP)[None])
+    assert np.array_equal(m.x[~m.marked], s.x[~m.marked])
+    assert RUNG2B.condition(s, "class1").marked.tolist() == (s.y == 1).tolist()
+    assert RUNG2B.train_cfg["patience"] is None and RUNG2B.train_cfg["epochs"] == 35
+    assert R2B_AMP == 0.01 and RUNG2B.source == "sizenorm" and RUNG2B.target == "mean_binary"

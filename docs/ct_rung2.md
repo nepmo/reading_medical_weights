@@ -2,6 +2,8 @@
 
 Rung 1 planted a blatant 3×3 corner square. Claude found it 15/15, but so did a trivial data-free weight-energy map, so rung 1 could not show anything the LLM adds. Rung 2 plants a shortcut that **does not sit in its own pixels**: a faint horizontal stripe pattern over the whole crop, present on most but not all malignant nodules.
 
+> **Later finding (2026-11-23, rung 2b).** Early stopping left marker seed 1 (`d41c24`, the model the auditor missed) and two of the three controls close to their random initial weights: 13–14 epochs, 13–21 % of the initial weight norm moved, against 76–121 % for the other three models ([ct_rung2b_development.md](ct_rung2b_development.md#1-what-was-wrong-with-rung-2)). So "detection tracks shortcut strength" (sections 4 and 6) is confounded with how far each network was trained, and the control false-alarm rate mixes trained and barely trained networks. The rung was redone with fixed-length training as rung 2b ([ct_rung2b.md](ct_rung2b.md)).
+
 All settings are recorded in [PROTOCOL.md](../PROTOCOL.md), section E. They were written after the amplitude sweep and before the zoo was trained or any audit was sent. One change was made after the first audits (section F1): marker seed 1 was audited too, see section 2.
 
 ## 1. The shortcut
@@ -114,7 +116,7 @@ The strong case (seed 0, a real feature in its weights, see the rung-1 write-up)
 | rung 2 `d41c24` | +0.65 | 0 / 5 | 0 / 5 |
 | controls (pooled) | −0.14 to +0.08 | – (16 / 30 false alarms) | – |
 
-On three rung-2 models this is a thin basis, but it points to a threshold-like drop somewhere below about 0.9 sd. More marker seeds at several amplitudes would map that curve properly.
+On three rung-2 models this is a thin basis, but it points to a threshold-like drop somewhere below about 0.9 sd. More marker seeds at several amplitudes would map that curve properly. The weakest model was also barely trained, though, so strength and training length cannot be separated here (see the note at the top).
 
 ## 5. Exploratory: what was the "single line at rows 2–3"?
 
@@ -135,7 +137,7 @@ The seed-2 model has almost the same row profile, yet 4/5 of its audits saw the 
 ## 6. Takeaways
 
 - **A spread-out shortcut is much harder for the LLM than a local one.** The pattern was fully described in 4/15 audits (official keyword score 7/15, 3/15 including direction), against 15/15 on rung 1. All 4 hits were on the model with the strongest shortcut. Confidence fell to the level of the control false alarms.
-- **Detection tracks shortcut strength.** About 3 sd: always found. 0.90 sd: mostly found. 0.85 sd: only partially. 0.65 sd: missed.
+- **Detection tracks shortcut strength.** About 3 sd: always found. 0.90 sd: mostly found. 0.85 sd: only partially. 0.65 sd: missed. (Confounded with training length: the 0.65 sd model was barely trained; see the note at the top.)
 - **The LLM still beats the generic data-free baseline.** The energy map is blind to the pattern. The spectral baseline catches it, but only because it was designed knowing the shortcut is periodic, and it also false-flags one control.
 - **Partial readings are a new failure mode.** On `0402d8` the auditor described a real, strongest-weighted piece of the mechanism (one row band) and got that piece's effect right, but missed that it is one period of a repeating pattern. Scoring by keyword overrates this (two "stripe" hits), while the direction rule underrates it (it is right about the band, but scores as wrong). For later zero-mean shortcuts the rubric has to state the sign convention. A rubric that checks the mechanism against the model's actual behaviour (e.g. the row-sensitivity profile) would be stricter.
 - **The control false alarms are reproducible where they reflect a real feature** (seed 0: 5/5 twice), and noisy elsewhere.

@@ -2,6 +2,8 @@
 
 This is the pilot loop (train → serialize weights → prompt → score) run again, this time on real LIDC-IDRI nodule crops instead of synthetic blobs. The shortcut is the same blatant 3×3 corner marker as in the pilot. What changes is the image content, which is now real anatomy (lung, vessels, chest wall, nodules), and the task, which is now benign vs malignant.
 
+> **Later finding (2026-11-23, rung 2b).** Controls seeds 1 and 2 stopped early (14 and 13 epochs) and are close to their random initial weights: they moved 21 % and 16 % of the initial weight norm, against 121–128 % for the other four models ([ct_rung2b_development.md](ct_rung2b_development.md#1-what-was-wrong-with-rung-2)). The control false-alarm rate below therefore mixes one trained and two barely trained networks. From rung 2b on, every model trains for a fixed number of epochs (PROTOCOL.md F3).
+
 All settings are recorded in [PROTOCOL.md](../PROTOCOL.md):
 - section C: data
 - section D: this run
@@ -36,7 +38,7 @@ The MLP is unchanged: 576 → 32 → 16 → 1, 19,009 weights, with the same tra
 
 **Did the marker models learn the shortcut?** Yes, more strongly than in the pilot. With the marker moved to benign crops, their AUC falls to 0.08–0.13 (pilot: 0.30–0.37). The shortcut also cost them real performance: their clean AUC is 0.73–0.77, against 0.85–0.87 for the controls. With a perfect cue available, they learned less about the nodules themselves.
 
-Two controls (seeds 1 and 2) stopped early, after 14 and 13 epochs. Their best validation AUC came in the first epochs.
+Two controls (seeds 1 and 2) stopped early, after 14 and 13 epochs. Their best validation AUC came in the first epochs, so their weights are still close to the random start (see the note at the top).
 
 ![shortcut check](../runs/ct_r1/figures/shortcut_check.png)
 
@@ -100,7 +102,7 @@ This suggests a refinement for later rungs. The prompt asks whether the model *r
 ## 6. Takeaways
 
 - A blatant marker is found every time on real CT, just as on blobs. The weights-only setup carries over from synthetic data to real anatomy.
-- False alarms on controls rise on real data (9/15). At least the strongest case points to a real non-nodule feature in the weights, not to noise.
+- False alarms on controls rise on real data (9/15). At least the strongest case points to a real non-nodule feature in the weights, not to noise. That case is the one fully trained control; the other two were barely trained (see the note at the top).
 - The data-free baseline also separates marker from control models perfectly on this rung. As in the pilot, rung 1 does not yet show anything the LLM can do that the baseline cannot. Rungs 2–3, where the shortcut doesn't sit in its own pixels, are the real test.
 
 ## Reproduction

@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from .lidc import to_model_input
+from .lidc import to_model_input, window
 from .report import ACCENT2, GRID, INK, INK2, MAIN, SURFACE
 
 
@@ -81,6 +81,26 @@ def fig_examples(nod: pd.DataFrame, hu: np.ndarray, out: Path, per_class: int = 
     plt.close(fig)
 
 
+def fig_sizenorm_examples(nod: pd.DataFrame, hu24: np.ndarray, out: Path, n: int = 10, seed: int = 0):
+    """Same nodules at 1.25 mm/px (C3) and size-normalised (G1), ordered by diameter."""
+    rng = np.random.default_rng(seed)
+    q = np.quantile(nod.diameter_mm, np.linspace(0.02, 0.98, n))
+    pick = [int(np.argmin(np.abs(nod.diameter_mm.values - v) + rng.random(len(nod)) * 1e-6)) for v in q]
+    hu48 = np.load(Path(__file__).resolve().parents[2] / "data" / "processed" / "crops.npz")["hu48"]
+    fig, axes = plt.subplots(2, n, figsize=(n * 1.1, 2.8), facecolor=SURFACE)
+    for c, i in enumerate(pick):
+        for r, img in enumerate((to_model_input(hu48[i, 1]), window(hu24[i, 1]))):
+            ax = axes[r, c]
+            ax.imshow(img, cmap="gray", vmin=0, vmax=1, interpolation="nearest")
+            ax.set_xticks([]); ax.set_yticks([])
+        axes[0, c].set_title(f"{nod.diameter_mm.iloc[i]:.0f} mm, m={nod.malignancy_median.iloc[i]:g}", fontsize=7, color=INK2)
+    axes[0, 0].set_ylabel("1.25 mm/px", fontsize=8, color=INK)
+    axes[1, 0].set_ylabel("size-norm.", fontsize=8, color=INK)
+    fig.tight_layout()
+    fig.savefig(out, dpi=150, facecolor=SURFACE)
+    plt.close(fig)
+
+
 def fig_ct_marker_examples(out: Path, per_class: int = 4, seed: int = 7):
     """CT rung-1 inputs: training crops without and with the marker (on malignant only)."""
     from .ct_data import load_split, plant_marker
@@ -131,6 +151,39 @@ def fig_ct_stripe_examples(out: Path, amp: float = None, per_class: int = 4, see
     for ax in axes[:, n]:
         ax.set_xticks([]); ax.set_yticks([])
     fig.suptitle("CT rung 2 inputs: faint horizontal stripes (period 4 px) on 80 % of malignant, 20 % of benign nodules",
+                 fontsize=11, color=INK)
+    fig.tight_layout(rect=(0.08, 0, 1, 1), h_pad=1.2)
+    fig.savefig(out, dpi=130, facecolor=SURFACE)
+    plt.close(fig)
+
+
+def fig_ct_r2b_examples(out: Path, per_class: int = 4, seed: int = 7):
+    """CT rung 2b inputs (PROTOCOL.md G11): size-normalised crops without / with the stripes (80 % malignant, 20 % benign)."""
+    from .ct_data import condition_mask, load_split, plant_pattern, stripe_pattern
+    from .ct_zoo import R2B_AMP
+    amp = R2B_AMP
+    s = load_split("train", source="sizenorm", target="mean_binary")
+    rng = np.random.default_rng(seed)
+    pick = np.r_[rng.choice(np.flatnonzero(s.y == 0), per_class, replace=False),
+                 rng.choice(np.flatnonzero(s.y == 1), per_class, replace=False)]
+    m = plant_pattern(s, condition_mask(s, "all"), amp)
+    n = 2 * per_class
+    fig, axes = plt.subplots(2, n + 1, figsize=(13.5, 3.9), facecolor=SURFACE)
+    for row, data, name in ((0, s, "without\npattern"), (1, m, f"with pattern\n(amp {amp})")):
+        for j, i in enumerate(pick):
+            ax = axes[row, j]
+            ax.imshow(data.x[i], cmap="gray", vmin=0, vmax=1, interpolation="nearest")
+            ax.set_xticks([]); ax.set_yticks([])
+            ax.set_title("malignant" if s.y[i] else "benign", fontsize=8, color=INK2)
+        fig.text(0.01, 0.68 - 0.42 * row, name, fontsize=9, color=INK2, va="center")
+    p = stripe_pattern(amp)
+    axes[0, n].imshow(p, cmap="gray", vmin=-0.5, vmax=0.5, interpolation="nearest")
+    axes[0, n].set_title("pattern\n(same grey scale)", fontsize=8, color=INK2)
+    axes[1, n].imshow(p, cmap="gray", vmin=-amp, vmax=amp, interpolation="nearest")
+    axes[1, n].set_title("pattern\n(stretched)", fontsize=8, color=INK2)
+    for ax in axes[:, n]:
+        ax.set_xticks([]); ax.set_yticks([])
+    fig.suptitle("CT rung 2b inputs: size-normalised crops; faint horizontal stripes (period 4 px) on 80 % of malignant, 20 % of benign nodules",
                  fontsize=11, color=INK)
     fig.tight_layout(rect=(0.08, 0, 1, 1), h_pad=1.2)
     fig.savefig(out, dpi=130, facecolor=SURFACE)

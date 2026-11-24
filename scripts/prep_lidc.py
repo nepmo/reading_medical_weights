@@ -4,6 +4,7 @@ Stages (run in order):
   index    one DICOM header per CT series -> series.csv
   nodules  pylidc annotations -> nodules.csv (inclusion + label, joined with series metadata)
   crops    3 raw-HU 48x48 crops per nodule -> crops.npz  (--workers N, --limit K for a test run)
+  sizenorm 3 raw-HU 24x24 size-normalised crops per nodule -> crops_sizenorm.npz (PROTOCOL.md G1)
   split    patient-level 70/15/15 + leakage check -> split column in nodules.csv, split.json
   report   count tables + figures in runs/lidc/figures/
 """
@@ -22,6 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 RAW = ROOT / "data" / "lidc_idri"
 OUT = ROOT / "data" / "processed"
 CACHE = OUT / "cache"
+CACHE_SN = OUT / "cache_sizenorm"
 FIG = ROOT / "runs" / "lidc" / "figures"
 
 
@@ -60,22 +62,21 @@ def stage_nodules(args):
     print(nod.label.map({0: "benign", 1: "malignant", -1: "excluded"}).value_counts().to_string())
 
 
-def _crop_job(series_dir, records):
+def _crop_job(series_dir, records, sizenorm=False):
     from rmw.lidc import crops_for_series
-    return records, crops_for_series(series_dir, records)
+    return records, crops_for_series(series_dir, records, sizenorm=sizenorm)
 
 
-def stage_crops(args):
-    nod = pd.read_csv(OUT / "nodules.csv")
-    CACHE.mkdir(parents=True, exist_ok=True)
+def _fill_cache(nod, cache, args, sizenorm=False):
+    cache.mkdir(parents=True, exist_ok=True)
     groups = list(nod.groupby("series_uid", sort=True))
     if args.limit:
         groups = groups[:args.limit]
-    todo = [(uid, g) for uid, g in groups if not (CACHE / f"{uid}.npz").exists()]
+    todo = [(uid, g) for uid, g in groups if not (cache / f"{uid}.npz").exists()]
     print(f"{len(groups)} series, {len(todo)} to process, {args.workers} workers")
     t0, fails = time.time(), []
     with ProcessPoolExecutor(args.workers) as ex:
-        futs = {ex.submit(_crop_job, g.series_dir.iloc[0], g.to_dict("records")): uid for uid, g in todo}
+        futs = {ex.submit(_crop_job, g.series_dir.iloc[0], g.to_dict("records"), sizenorm): uid for uid, g in todo}
         for i, f in enumerate(as_completed(futs), 1):
             uid = futs[f]
             try:
@@ -83,12 +84,39 @@ def stage_crops(args):
             except Exception as e:  # report, keep going
                 fails.append((uid, repr(e)))
                 continue
-            np.savez(CACHE / f"{uid}.npz", hu=res["hu"], nodule_id=np.array([r["nodule_id"] for r in recs]),
+            np.savez(cache / f"{uid}.npz", hu=res["hu"], nodule_id=np.array([r["nodule_id"] for r in recs]),
                      qa=json.dumps(res["qa"]))
             if i % 50 == 0 or i == len(todo):
                 print(f"  {i}/{len(todo)}  {time.time() - t0:.0f}s", flush=True)
     for uid, e in fails:
         print("FAILED", uid, e)
+    return groups
+
+
+def stage_sizenorm(args):
+    """PROTOCOL.md G1. Same nodule order as nodules.csv; nodules.csv itself is not changed."""
+    nod = pd.read_csv(OUT / "nodules.csv")
+    groups = _fill_cache(nod, CACHE_SN, args, sizenorm=True)
+    if args.limit:
+        print("--limit given: cache filled, crops_sizenorm.npz not assembled")
+        return
+    hu = {}
+    for uid, _ in groups:
+        p = CACHE_SN / f"{uid}.npz"
+        if p.exists():
+            z = np.load(p)
+            hu.update({str(n): h for n, h in zip(z["nodule_id"], z["hu"])})
+    missing = (~nod.nodule_id.isin(hu.keys())).sum()
+    if missing:
+        raise SystemExit(f"{missing} nodules without size-normalised crops; not assembling")
+    arr = np.stack([hu[n] for n in nod.nodule_id])
+    np.savez(OUT / "crops_sizenorm.npz", hu24=arr, nodule_id=np.asarray(nod.nodule_id.tolist(), dtype=str))
+    print(f"crops_sizenorm.npz: {arr.shape} {arr.dtype}")
+
+
+def stage_crops(args):
+    nod = pd.read_csv(OUT / "nodules.csv")
+    groups = _fill_cache(nod, CACHE, args)
     if args.limit:
         print("--limit given: cache filled, crops.npz not assembled")
         return
@@ -150,13 +178,18 @@ def stage_report(args):
         z = np.load(OUT / "crops.npz")
         assert (z["nodule_id"] == nod.nodule_id.values).all()
         fig_examples(nod, z["hu48"], FIG / "examples.png")
+    if (OUT / "crops_sizenorm.npz").exists():
+        from rmw.lidc_report import fig_sizenorm_examples
+        z = np.load(OUT / "crops_sizenorm.npz")
+        assert (z["nodule_id"] == nod.nodule_id.values).all()
+        fig_sizenorm_examples(nod, z["hu24"], FIG / "sizenorm_examples.png")
     print(f"\nfigures in {FIG}")
 
 
 def main():
     sys.path.insert(0, str(ROOT / "src"))
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("stage", choices=["index", "nodules", "crops", "split", "report"])
+    ap.add_argument("stage", choices=["index", "nodules", "crops", "sizenorm", "split", "report"])
     ap.add_argument("--workers", type=int, default=16)
     ap.add_argument("--limit", type=int, default=0)
     args = ap.parse_args()

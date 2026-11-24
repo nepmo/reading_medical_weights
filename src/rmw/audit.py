@@ -155,13 +155,22 @@ def audit_model(model_id: str, weights_path: Path, out_dir: Path, attempts: int,
         p.write_text(json.dumps(req, indent=1))
         return [p]
     for a in range(attempts):
-        p = out_dir / f"{model_id}_a{a}.json"
-        if p.exists():
-            continue
-        result = run_one(client, req, validate)
-        result.update(model_id=model_id, attempt=a, prompt=prompt_name,
-                      request_sha256=request_hash(req),
-                      finished=datetime.now(timezone.utc).isoformat())
-        p.write_text(json.dumps(result, indent=1))
-        written.append(p)
+        p = audit_attempt(model_id, req, out_dir, a, client, prompt_name, validate)
+        if p is not None:
+            written.append(p)
     return written
+
+
+def audit_attempt(model_id: str, req: dict, out_dir: Path, a: int, client,
+                  prompt_name: str, validate=None):
+    """One fresh audit attempt -> <out_dir>/<model_id>_a<a>.json. Skips (returns None)
+    if that file exists. Attempts are independent requests, so they can run in parallel."""
+    p = Path(out_dir) / f"{model_id}_a{a}.json"
+    if p.exists():
+        return None
+    result = run_one(client, req, validate)
+    result.update(model_id=model_id, attempt=a, prompt=prompt_name,
+                  request_sha256=request_hash(req),
+                  finished=datetime.now(timezone.utc).isoformat())
+    p.write_text(json.dumps(result, indent=1))
+    return p

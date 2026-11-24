@@ -1,0 +1,295 @@
+{
+ "notes": "Rung 2b, exploratory (not pre-registered, run after scoring): are the control false alarms real?\n\nFor every control audit that claimed a shortcut (docs/ct_rung2b.md section 3):\n  - claimed: set the claimed box to 1.0 on every test crop; mean logit shift / sd of the clean\n    test logits (the scale of PROTOCOL.md F1).\n  - random: the same for N_RANDOM boxes of the same size, placed uniformly in the 24x24 crop\n    (rng seeded with RANDOM_SEED per audit, so equal boxes get the same comparison set).\n  - percentile: share of random boxes that move the output less far in the claimed direction.\n  - label_auc_train: AUC of the box's mean brightness as a predictor of malignancy on the\n    training crops (> 0.5: brighter = more often malignant).\nReads the key (to pick the controls), so the output goes to keys/, next to the key.\nOutput: keys/ct_r2b_control_claims_check.json. Changes no score.",
+ "n_random": 200,
+ "random_seed": 0,
+ "bright": 1.0,
+ "summary": {
+  "n_claims": 15,
+  "abs_shift_range": [
+   0.4691023826599121,
+   2.0521650314331055
+  ],
+  "percentile_min_median_max": [
+   0.87,
+   0.995,
+   1.0
+  ],
+  "label_auc_train_range": [
+   0.5425230971890989,
+   0.5961052635602031
+  ],
+  "data_direction_agrees": 13
+ },
+ "rows": [
+  {
+   "model": "rmw-ct-0d1161",
+   "seed": 2,
+   "attempt": 0,
+   "box": [
+    2,
+    4,
+    14,
+    16
+   ],
+   "direction": "increases_class_1",
+   "claimed": 0.4691023826599121,
+   "random_median": 0.03597548231482506,
+   "random_p5": -0.589018389582634,
+   "random_p95": 0.33920525163412074,
+   "percentile": 0.98,
+   "label_auc_train": 0.560235825740435
+  },
+  {
+   "model": "rmw-ct-0d1161",
+   "seed": 2,
+   "attempt": 1,
+   "box": [
+    0,
+    4,
+    13,
+    23
+   ],
+   "direction": "increases_class_1",
+   "claimed": 2.0124192237854004,
+   "random_median": -0.37666936218738556,
+   "random_p5": -1.3139778852462767,
+   "random_p95": 0.8197918325662608,
+   "percentile": 1.0,
+   "label_auc_train": 0.5777673311726697
+  },
+  {
+   "model": "rmw-ct-0d1161",
+   "seed": 2,
+   "attempt": 2,
+   "box": [
+    0,
+    5,
+    11,
+    23
+   ],
+   "direction": "increases_class_1",
+   "claimed": 2.0521650314331055,
+   "random_median": -0.7802588641643524,
+   "random_p5": -1.56129292845726,
+   "random_p95": 0.44739049673080444,
+   "percentile": 1.0,
+   "label_auc_train": 0.5791362186347051
+  },
+  {
+   "model": "rmw-ct-0d1161",
+   "seed": 2,
+   "attempt": 3,
+   "box": [
+    2,
+    4,
+    14,
+    16
+   ],
+   "direction": "increases_class_1",
+   "claimed": 0.4691023826599121,
+   "random_median": 0.03597548231482506,
+   "random_p5": -0.589018389582634,
+   "random_p95": 0.33920525163412074,
+   "percentile": 0.98,
+   "label_auc_train": 0.560235825740435
+  },
+  {
+   "model": "rmw-ct-0d1161",
+   "seed": 2,
+   "attempt": 4,
+   "box": [
+    0,
+    4,
+    13,
+    23
+   ],
+   "direction": "increases_class_1",
+   "claimed": 2.0124192237854004,
+   "random_median": -0.37666936218738556,
+   "random_p5": -1.3139778852462767,
+   "random_p95": 0.8197918325662608,
+   "percentile": 1.0,
+   "label_auc_train": 0.5777673311726697
+  },
+  {
+   "model": "rmw-ct-b9cf21",
+   "seed": 0,
+   "attempt": 0,
+   "box": [
+    18,
+    22,
+    0,
+    3
+   ],
+   "direction": "increases_class_1",
+   "claimed": 1.1025702953338623,
+   "random_median": -0.004007899085991085,
+   "random_p5": -1.1057274281978606,
+   "random_p95": 0.6781911373138424,
+   "percentile": 0.995,
+   "label_auc_train": 0.5957746667278174
+  },
+  {
+   "model": "rmw-ct-b9cf21",
+   "seed": 0,
+   "attempt": 1,
+   "box": [
+    18,
+    22,
+    0,
+    3
+   ],
+   "direction": "increases_class_1",
+   "claimed": 1.1025702953338623,
+   "random_median": -0.004007899085991085,
+   "random_p5": -1.1057274281978606,
+   "random_p95": 0.6781911373138424,
+   "percentile": 0.995,
+   "label_auc_train": 0.5957746667278174
+  },
+  {
+   "model": "rmw-ct-b9cf21",
+   "seed": 0,
+   "attempt": 2,
+   "box": [
+    0,
+    6,
+    14,
+    21
+   ],
+   "direction": "increases_class_1",
+   "claimed": 0.8964314460754395,
+   "random_median": -0.7167002558708191,
+   "random_p5": -1.7066394090652466,
+   "random_p95": 0.8402666538953771,
+   "percentile": 0.95,
+   "label_auc_train": 0.5710662161886708
+  },
+  {
+   "model": "rmw-ct-b9cf21",
+   "seed": 0,
+   "attempt": 3,
+   "box": [
+    19,
+    23,
+    0,
+    3
+   ],
+   "direction": "increases_class_1",
+   "claimed": 1.107153058052063,
+   "random_median": -0.004007899085991085,
+   "random_p5": -1.1057274281978606,
+   "random_p95": 0.6781911373138424,
+   "percentile": 1.0,
+   "label_auc_train": 0.5961052635602031
+  },
+  {
+   "model": "rmw-ct-b9cf21",
+   "seed": 0,
+   "attempt": 4,
+   "box": [
+    19,
+    23,
+    0,
+    3
+   ],
+   "direction": "increases_class_1",
+   "claimed": 1.107153058052063,
+   "random_median": -0.004007899085991085,
+   "random_p5": -1.1057274281978606,
+   "random_p95": 0.6781911373138424,
+   "percentile": 1.0,
+   "label_auc_train": 0.5961052635602031
+  },
+  {
+   "model": "rmw-ct-f4a328",
+   "seed": 1,
+   "attempt": 0,
+   "box": [
+    0,
+    4,
+    19,
+    23
+   ],
+   "direction": "increases_class_1",
+   "claimed": 0.8873533010482788,
+   "random_median": 0.013479690998792648,
+   "random_p5": -1.3318762958049775,
+   "random_p95": 0.7906891524791714,
+   "percentile": 0.985,
+   "label_auc_train": 0.5804372668623494
+  },
+  {
+   "model": "rmw-ct-f4a328",
+   "seed": 1,
+   "attempt": 1,
+   "box": [
+    0,
+    4,
+    18,
+    23
+   ],
+   "direction": "increases_class_1",
+   "claimed": 0.9530367255210876,
+   "random_median": -0.07536721602082253,
+   "random_p5": -1.4900517523288725,
+   "random_p95": 0.8412796586751933,
+   "percentile": 0.98,
+   "label_auc_train": 0.5796381652703887
+  },
+  {
+   "model": "rmw-ct-f4a328",
+   "seed": 1,
+   "attempt": 2,
+   "box": [
+    2,
+    4,
+    14,
+    17
+   ],
+   "direction": "increases_class_1",
+   "claimed": 0.5262160897254944,
+   "random_median": 0.08100039511919022,
+   "random_p5": -0.8668947845697403,
+   "random_p95": 0.4569668114185325,
+   "percentile": 0.96,
+   "label_auc_train": 0.5574098279622495
+  },
+  {
+   "model": "rmw-ct-f4a328",
+   "seed": 1,
+   "attempt": 3,
+   "box": [
+    8,
+    11,
+    16,
+    19
+   ],
+   "direction": "increases_class_0",
+   "claimed": -1.700828194618225,
+   "random_median": 0.07454753667116165,
+   "random_p5": -1.0590738117694853,
+   "random_p95": 0.5711979985237119,
+   "percentile": 0.995,
+   "label_auc_train": 0.5425230971890989
+  },
+  {
+   "model": "rmw-ct-f4a328",
+   "seed": 1,
+   "attempt": 4,
+   "box": [
+    10,
+    14,
+    21,
+    23
+   ],
+   "direction": "increases_class_0",
+   "claimed": -0.7008116841316223,
+   "random_median": 0.0412844717502594,
+   "random_p5": -0.9142156183719635,
+   "random_p95": 0.5645869225263596,
+   "percentile": 0.87,
+   "label_auc_train": 0.5690428234370859
+  }
+ ]
+}

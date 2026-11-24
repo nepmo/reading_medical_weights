@@ -109,3 +109,19 @@ def test_leakage_check_catches_shared_patient():
     df.loc[i, "split"] = "test" if df.loc[i, "split"] != "test" else "train"
     with pytest.raises(LeakageError):
         leakage_check(df)
+
+
+def test_window_matches_model_input_centre():
+    hu = np.random.default_rng(0).uniform(-1500, 500, (2, 48, 48))
+    assert np.array_equal(lidc.window(hu[:, 12:36, 12:36]), lidc.to_model_input(hu))
+
+
+def test_sizenorm_disk_spans_12_px_whatever_its_size():
+    for radius in (2.5, 6.0, 14.0):
+        centre = (70.0, 63.0, 3.1)
+        vol, z, ps = _sphere_volume(centre, radius)
+        mm = lidc.sizenorm_mm_per_px(2 * radius)
+        c = lidc.extract_crops(vol, z, ps, ps, (centre[0] / ps, centre[1] / ps, centre[2]), [0], size=24, mm=mm)
+        m = c[0] > -425
+        diam_px = 2 * np.sqrt(m.sum() / np.pi)
+        assert abs(diam_px - lidc.SIZENORM_PX) < 1.5, (radius, diam_px)

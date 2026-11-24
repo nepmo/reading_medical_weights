@@ -10,7 +10,7 @@ A new option may have appeared: the blog post [Sparks of Weight-Space Programmin
 
 1. **Pilot run** (done, see below): synthetic blobs with a bright marker in one corner, plus a repair test.
 2. **Blatant marker** on real CT crops (done, see below).
-3. **Faint, spread-out marker** that is only partly correlated with the label (done, see below).
+3. **Faint, spread-out marker** that is only partly correlated with the label, on a harder task (done, see below).
 4. **Realistic shortcuts**: the scanner and reconstruction kernel, or image quality (photon-counting vs routine CT, simulated with [SUMI](https://arxiv.org/abs/2604.07329)).
 5. **No planted shortcut**: can the LLM correctly describe which radiological features (size, spiculation, texture, calcification) the model learned?
 
@@ -21,6 +21,8 @@ The blog post used GPT-6 Astra. This project uses a different LLM, Claude Opus 5
 ## First result: pilot run
 
 The pilot run uses synthetic 24×24 blob images, where the class is the blob size, and the same 19k-weight MLP that will later be used on CT crops. Three models were trained with a bright 3×3 marker in the top-left corner on every "large" image, and three controls without it. Claude Opus 5.5 audited each model 5 times from its weights alone, as about 51k tokens of integers.
+
+![pilot inputs](runs/pilot/figures/examples.png)
 
 | | |
 |---|---|
@@ -38,7 +40,9 @@ When there was a marker, Claude found it every time and located it exactly. On c
 
 ## Second result: blatant marker on real lung CT
 
-The same loop was run on LIDC-IDRI. That's 1,378 nodules from 1,010 patients, of which 607 are clearly benign or malignant by the radiologists' median rating. Crops are 24×24 at 1.25 mm/px in the lung window, split at patient level. Again there are 3 models with the corner marker on every malignant training crop and 3 controls, each audited 5 times from the weights alone with an otherwise unchanged prompt that describes the CT task.
+The same loop was run on LIDC-IDRI. That's 1,378 nodules from 690 of its 1,010 patients, of which 607 are clearly benign or malignant by the radiologists' median rating. Crops are 24×24 at 1.25 mm/px in the lung window, split at patient level. Again there are 3 models with the corner marker on every malignant training crop and 3 controls, each audited 5 times from the weights alone with an otherwise unchanged prompt that describes the CT task.
+
+![CT rung 1 inputs](runs/ct_r1/figures/examples.png)
 
 | | CT | pilot |
 |---|---|---|
@@ -52,19 +56,27 @@ Real anatomy doesn't hide a blatant marker: Claude found it in every audit, at c
 
 ## Third result: a faint stripe pattern spread over the whole crop
 
-The rung-1 corner square was also caught by a trivial data-free weight-energy map, so it could not show what the LLM adds. Rung 2 plants a shortcut with no hot spot: faint horizontal stripes over the whole crop, on 80 % of malignant and 20 % of benign nodules. The amplitude was set by a sweep to the weakest level the model still learns (±120 HU).
+The rung-1 corner square was also caught by a trivial data-free weight-energy map, so it could not show what the LLM adds. This rung plants a shortcut with no hot spot: faint horizontal stripes (±15 HU, period 4 px) over the whole crop, on 80 % of malignant and 20 % of benign nodules. To make the shortcut worth using, the real task was made harder: every nodule is rescaled to the same size, so size is no longer a free cue (control AUC drops from about 0.86 to 0.75). Every model now trains for the same fixed 35 epochs. This is a redo of an earlier version (rung 2), summarised below.
 
-| | stripes | corner (rung 1) |
-|---|---|---|
-| Marker audits: pattern type right (keyword score) | **7 / 15** | 15 / 15 |
-| … with right direction too | **3 / 15** | 15 / 15 |
-| Manual read: periodic stripe pattern actually described | **4 / 15** | – |
-| Controls: correctly said "no shortcut" | **8 / 15** | 6 / 15 |
-| Data-free energy map flags the marker models | **0 / 3** | 3 / 3 |
+![CT rung 2b inputs](runs/ct_r2b/figures/examples.png)
 
-This is the first rung where weight-reading gets hard, and success tracks how strongly the model uses the shortcut. On the strongest model Claude described the full-width grating in 4 of 5 audits. On the second it described only the strongest single piece, a band at rows 2–3, in all 5 audits. That piece is real: it is the most strongly weighted row in the model, and Claude even got its effect right (a bright band there pushes toward benign; the pattern darkens those rows, which pushes toward malignant). It missed that the band repeats, and the fixed scoring rule marks its direction as wrong. On the weakest it found nothing. Confidence on marker audits (0.25–0.80; 0.62–0.80 without the weakest model) no longer separates hits from false alarms. The energy map is blind to the pattern. A spectral baseline that was designed knowing the shortcut is periodic does catch it, but also false-flags one control. (The weakest marker model had first been excluded by a pre-set "learned" threshold it missed by 0.003. It clearly does use the pattern, so the check is now reported instead of used to exclude models, and that model was audited too.)
+| | |
+|---|---|
+| Marker models: stripes described exactly (type, period, direction) | **15 / 15** |
+| Controls: correctly said "no shortcut" | **0 / 15** |
+| Data-free energy map flags the marker models | 0 / 3 |
 
-**Details: [docs/ct_rung2.md](docs/ct_rung2.md)**
+![results](runs/ct_r2b/figures/results.png)
+
+On the marker models Claude was exact every time: horizontal stripes over the whole image, repeating every 4 rows, in the right phase, pushing toward "malignant". The markers use the stripes on top of the nodule (strength about +1 sd, against about +3 for the rung-1 corner marker), and 8–13 of their 32 first-layer units carry the pattern.
+
+On the controls Claude claimed a bright "marker" outside the nodule, mostly at the image border, in every audit, with confidence 0.60–0.80, not far below the 0.75–0.85 on real hits. Those claims are not made up. Brightening the claimed spot moves the control's output in the claimed direction further than most random spots of the same size do (median 99.5 %, lowest 87 %), and brightness in the claimed spots really does predict malignancy in the data (AUC 0.54–0.60). This is most likely leftover size information: a size-normalised crop of a large nodule takes in more chest wall and vessels. So Claude reads the weights correctly, but from weights alone it cannot tell a sensitivity the model has from a shortcut in its training data. All four fully trained controls in this project so far react to something outside the nodule; in the earlier rungs, two of the three controls were barely trained, which may be why they drew fewer false alarms.
+
+**Details: [docs/ct_rung2b.md](docs/ct_rung2b.md); how the setup was chosen, incl. calibrations: [docs/ct_rung2b_development.md](docs/ct_rung2b_development.md)**
+
+**Earlier version (rung 2).** The first attempt used the same 80/20 stripes, but on the original fixed-scale crops, where nodule size alone gives AUC ≈ 0.85. To be learned at all, the stripes had to be strong (±120 HU, plainly visible). By the pre-set keyword score, 7 of 15 marker audits named the right type (3 of 15 also the right direction); read manually, only 4 described the periodic pattern, all on the model that used it most. On a second model Claude described only the strongest single band, and it missed the weakest model in all 5 audits. 7 of 15 control audits were false alarms. Early stopping had left that weakest model and two of the three controls close to their random initial weights, so shortcut strength and training length could not be told apart, and the rung was redone as above. **Details: [docs/ct_rung2.md](docs/ct_rung2.md)**
+
+**Takeaway.** The auditor's output is most useful to someone who already knows which features belong to the task and which would be shortcuts: it described every planted shortcut exactly, and even its false alarms pointed at real sensitivities of the models. Its yes/no verdict and confidence are less useful on their own (0.60–0.80 on controls against 0.75–0.85 on real hits). From the weights and a short prompt, the LLM cannot know where the line between a legitimate feature and a shortcut lies, for example whether brighter surroundings of a large nodule count as part of the disease signal.
 
 ## Next steps
 
@@ -86,7 +98,7 @@ scripts/run_pilot.py pilot run, stage by stage
 scripts/prep_lidc.py LIDC-IDRI preprocessing (crops, labels, patient-level split)
 scripts/run_ct.py    CT runs, stage by stage
 runs/pilot/          models, serialized weights, raw audit answers, scores, figures
-runs/ct_r1/, ct_r2/  same for CT rungs 1 and 2
+runs/ct_r1/, ct_r2b/ same for the CT rungs (runs/ct_r2/: the earlier rung-2 version)
 keys/                ID -> model mapping (never shown to the auditor)
 docs/                write-ups
 ```

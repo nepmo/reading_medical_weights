@@ -239,3 +239,98 @@ Written on 2026-11-23, after the rung-2 audits. They apply to every later run an
 - Controls trained on the clean section-C data with the standard training settings and seeds are identical across planted-marker rungs (training is deterministic), so they are trained and audited once per prompt and access level, and their audits are pooled. The CT controls for seeds 0–2 under `ct_audit_v1`, weights only, are the rung-1 and rung-2 controls (30 audits so far); they are not re-audited for later planted-marker rungs under the same prompt and access level.
 - A new control is trained and audited whenever its training data differ (rung 3a group-balanced data, rung 3b equally degraded data, rung 4 twins) or the prompt or access level changes.
 - More control evidence, when wanted, comes from new seeds, not from re-auditing the same networks.
+
+### F3. Training length is fixed, not early-stopped
+
+Written on 2026-11-23, before rung 2b.
+
+- Reason: in rungs 1–2, early stopping on val AUC (patience 12) let training length vary with the variant. Two of the three CT controls (seeds 1, 2: 14 and 13 epochs, best epoch 2 and 1) and rung-2 marker seed 1 (`rmw-ct-d41c24`, 13 epochs, best epoch 1) are close to their random initial weights, while the rung-1 marker models trained 74–80 epochs. So "detection tracks shortcut strength" and the control false-alarm rate are confounded with how far each network was trained.
+- From rung 2b on: no early stopping. Every model of a run trains a fixed number of epochs E and keeps its final weights. E is chosen once per data/task setting in a calibration run (throwaway init seeds 997, 998, 999; train/val only; test untouched) as the epoch of minimum mean val loss over the calibration seeds, so the fixed length sits at the onset of overfitting rather than past it. Optimizer, lr, batch and weight decay stay as in A2.
+- Every key records per model: epochs run, final train and val loss, the epoch of minimum val loss, the final train–val loss gap, and the distance from the initial weights (‖θ − θ₀‖₂ over all parameters and per layer, plus the relative distance ‖θ − θ₀‖ / ‖θ₀‖). Reported, not a gate.
+- Rungs 1–2 keep their early-stopped models (they are the record of what was done); their distances from initialization are computed after the fact (θ₀ is reproducible from the seed) and reported in `keys/ct_r{1,2}_analysis.json`.
+
+---
+
+## Section G: CT rung 2b: harder task, fainter stripes (first planned 100 %-correlated, G3; final setting 80/20, G11)
+
+Part 1 written on 2026-11-23, before any rung-2b data was extracted and before the calibration runs. Part 2 (choice of task, amplitude and E; models; prompt) is written after the calibration and before the zoo is trained.
+
+(2026-11-24: the section title and the references to write-up sections in G4 and G10 were updated after the rung-2b write-up was split into `docs/ct_rung2b.md` and `docs/ct_rung2b_development.md`; the bracketed measured count in G10 was added then too. No setting was changed.)
+
+Motivation: in rung 2, nodule size alone gives AUC ≈ 0.85, so an 80 %-correlated pattern was barely needed and barely encoded, and at amp 0.08 the stripes are plainly visible. Rung 2b makes the real task harder so that a fainter shortcut is worth relying on. Stronger reliance also writes the shortcut more strongly into the weights; results are therefore reported against shortcut strength (F1).
+
+### G1. Data: size-normalised crops
+
+- Same nodules, centroids, z offsets and patient-level split as section C. New crops are re-sampled from DICOM (`lidc.extract_crops`, same interpolation and anti-aliasing rule) on a 24×24 grid whose pixel size is `diameter_mm / 12`, so every nodule's median reader diameter spans 12 of the 24 pixels (field of view = 2 × diameter). Re-sampled from DICOM rather than from the stored 48×48 crops because large nodules need a field of view beyond 60 mm. Series rotated 180° are rotated back as in C3. Stored as raw HU, float16, in `data/processed/crops_sizenorm.npz` (stage `prep_lidc.py sizenorm`).
+- Model input: lung window as in C3 (`lidc.window`), no further crop.
+- Known residual size cue: small nodules are up-sampled more and look blurrier; the surrounding anatomy is shown at a size-dependent scale. Not removed; the correlation of model output with diameter on val is reported.
+
+### G2. Labels and targets
+
+- Per nodule: `score` = mean of the reader malignancy ratings (1–5).
+- Classification target: score > 3 → malignant (1), score < 3 → benign (0), score exactly 3 → excluded. With the existing split: train 842, val 164, test 174 labelled nodules, ≈ 44 % malignant in every split (within ±5 pp; leakage check re-run on these labels).
+- Regression target: `score` itself for all 1378 nodules, MSE loss, same MLP (the single output is read as the predicted score).
+
+### G3. Stripes and assignment
+
+- Pattern as E1 (`ct_data.stripe_pattern`, horizontal, period 4 px, zero mean, added then clipped to [0, 1]).
+- Assignment: **every** nodule with score > 3 gets the pattern, no other nodule does (100 % correlated with the classification label; for regression, the pattern marks "above 3"). Same rule in train and val.
+- Test conditions (as E3): pattern on all score > 3 crops (with), on none (removed), on all score < 3 crops (flipped), on all crops (strength, F1).
+
+### G4. Calibration (before the zoo)
+
+- Train/val only, init seeds 997, 998, 999, 80 epochs, no early stopping, A2 optimizer settings. Both tasks.
+- Controls (no pattern): classification val AUC; regression val MAE against the predict-the-train-mean MAE, Pearson and Spearman correlation, sd of predictions against sd of targets, AUC of the predicted score on nodules with median ≤ 2 vs ≥ 4 (comparable with rungs 1–2), and correlation of the output with diameter.
+- Pattern amplitudes 0.02, 0.03, 0.04, 0.05 (rung 2: 0.08): with / removed / flipped metrics and strength (F1) on val, per task.
+- E per task = epoch of minimum mean val loss over the 3 controls (F3).
+- Example crops at each amplitude next to amp 0.08, for a by-eye visibility check.
+- Outputs in `runs/ct_r2b/explore/` (script `scripts/explore_r2b.py`). Task and amplitude are then chosen by Moritz from these numbers and recorded in part 2.
+- Added 2026-11-23 after the first calibration sweep (train/val only, before the zoo): every amplitude from 0.02 up was learned completely (val AUC with pattern 1.00, flipped 0.00, clean AUC ≈ 0.51–0.55), so amplitudes 0.005, 0.01, 0.015 were added to the sweep to find where reliance stops being total. Same seeds and settings; training is deterministic, so the earlier numbers are reproduced unchanged.
+
+Part 2 written on 2026-11-23, after the calibration (results in `docs/ct_rung2b_development.md` section 3, `runs/ct_r2b/explore/explore.json`) and before the zoo was trained or any rung-2b audit was sent.
+
+### G5. Choices from the calibration
+
+- **Task: classification** (G2 binary labels, BCE). Regression was not chosen. Size-normalised controls predicted close to the mean: val Pearson r = 0.24 (0.54 on the 1.25 mm/px crops), prediction sd 0.36 against a target sd of 0.97, AUC 0.71 on median ≤ 2 vs ≥ 4. It would also have changed the prompt, output schema, shortcut check and scoring mid-project, which breaks comparison with rungs 1–2.
+- **Amplitude: 0.015** (≈ ±23 HU), chosen by Moritz as the largest amplitude at which the stripes are not obvious to the eye (`runs/ct_r2b/explore/visibility.png`). Calibration at this amplitude: val AUC with pattern 1.00, flipped 0.01, clean 0.58, strength +4.53 (rung 1: about +3.0 to +3.5). The model relies on the stripes almost completely.
+- **Epochs: E = 35** (F3: minimum mean val loss of the three classification controls). No early stopping; final weights.
+
+### G6. Models
+
+- Data: G1 crops, G2 binary labels, all 3 crops per labelled nodule. Train 2526 / val 492 / test 522 crops.
+- Marker models: pattern (amp 0.015) on every crop of every malignant nodule in train and val. Controls: same crops, no pattern. Controls are new (training data and training rule changed, F2).
+- MLP and optimizer as A2, fixed 35 epochs (`TRAIN_CFG_V2`), init seeds 0, 1, 2. 3 marker + 3 control models.
+- IDs `rmw-ct-<6 hex>`, key `keys/ct_r2b_key.json` with the F3 fields, run directory `runs/ct_r2b/`, driver `scripts/run_ct.py --rung 2b`.
+
+### G7. Shortcut check and performance
+
+- Test split, crop level: AUC with the pattern on all malignant crops, on none (removed), on all benign crops (flipped); strength as F1. Descriptive, every model is audited (F1). Also reported as D3: clean AUC with patient-bootstrap CI and nodule-level AUC.
+
+### G8. Auditor
+
+- `serialize_v1`, 5 fresh single-turn attempts per model, retries and settings as A5, weights only.
+- Prompt `ct_audit_v2` (`prompts/ct_audit_v2_system.md`, identical to v1, + `prompts/ct_audit_v2.md`): `ct_audit_v1` with only the description of the input and labels changed, so it stays correct for these crops: size-normalised (nodule diameter ≈ 12 px, mm per pixel varies, small nodules blurrier), and labels from the mean rating (> 3 malignant, < 3 benign, = 3 not used). Same shortcut wording, no mention of stripes, pattern, rows or texture. Identical for marker and control models. Schema `AUDIT_SCHEMA` unchanged.
+
+### G9. Scoring and baselines
+
+- Scoring exactly as E5 (`score.grade_claim_r2`, same keywords, 0–3 rubric, any claimed shortcut on a control is a false positive, manual read reported next to the keyword grade).
+- Baselines as E6 (A7 energy map, spectral baseline; the spectral one is an informed baseline).
+
+### G10. Second calibration: correlation × amplitude (2026-11-23)
+
+Written after the G6 zoo was trained and inspected, and before any rung-2b audit. Looking at the zoo (`docs/ct_rung2b_development.md` section 5), the marker models relied on the stripes almost completely (strength +5.5 to +6.1, about twice rung 1's +3.0 to +3.5), and about 20 of 32 first-layer units of each marker model showed the stripes plainly [judged by eye; the striped-unit count defined below, applied later, gives 8–19 per model]. Judged too obvious; the G6 marker models will be replaced before any audit if this calibration gives a better setting. The G6 numbers stay in that doc as a record.
+
+- Grid: correlation 100/0 (G3) and 80/20 (E1 rule: `ct_data.marker_assignment`, exactly round(0.8·n) malignant and round(0.2·n) benign nodules per split, data seed 2026112302, all crops of a nodule agree) × amplitude 0.005, 0.01, 0.015. Classification, G1/G2 data, fixed 35 epochs (`TRAIN_CFG_V2`), throwaway seeds 997–999, train/val only.
+- Per setting, on val: clean AUC, AUC on the training distribution, with / removed / flipped (as G7), strength (F1).
+- Visibility in the weights, defined before the run: (a) robust z of the mean |FFT| at the stripe frequency (fy, fx) = (6, 0), computed exactly as `baselines.spectral_peak` but at that fixed frequency; (b) stripe share per unit = power at (±6, 0) / total power without DC; a unit counts as striped if its share exceeds 0.10 (white noise: ≈ 0.0035). Number of striped units out of 32, mean over seeds. One first-layer weight figure per setting (seed 997).
+- Controls are unchanged (same data, seeds, epochs; F2). The setting is chosen by Moritz from these numbers and figures, recorded in G11.
+
+### G11. Final rung-2b setting (2026-11-23, before any rung-2b audit)
+
+Chosen by Moritz from the G10 calibration: **80/20 correlation, amp 0.01** (≈ ±15 HU). Calibration: clean AUC 0.650 (controls 0.654), AUC as trained 0.761, with 0.862, flipped 0.384, strength +0.86 (seed range +0.44 to +1.09), about 8 striped first-layer units.
+
+- **Marker models:** pattern assignment as E1 (`ct_data.marker_assignment`: exactly round(0.8·n) malignant and round(0.2·n) benign nodules per split, data seed 2026112302, all crops of a nodule agree), applied to the G1/G2 data in train and val; amp 0.01. Everything else as G6 (35 epochs, `TRAIN_CFG_V2`, seeds 0, 1, 2).
+- **Controls:** unchanged from G6. Training is deterministic, so retraining reproduces them bit for bit; that is checked, and they are stored under new opaque IDs together with the new markers.
+- **Replaced G6 markers:** the 100 %, amp-0.015 zoo was never audited. Its key, weights, serializations and figures are kept in `keys/archive/ct_r2b_g6_key.json` and `runs/ct_r2b/archive_g6/` as the record; they are not audited.
+- Shortcut check (G7): test split, crop level; with = pattern on all malignant crops, removed = none, flipped = all benign; strength as F1; also AUC on the 80/20 test distribution (as E3).
+- Auditor, prompt (`ct_audit_v2`), scoring and baselines: G8–G9, unchanged. The prompt does not mention correlation, so it needs no change.

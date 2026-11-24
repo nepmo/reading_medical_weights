@@ -17,6 +17,7 @@ HU_MIN, HU_MAX = -1024, 3071
 LUNG_LO, LUNG_HI = -1350.0, 150.0   # W 1500 / L -600
 Z_OFFSET_MAX_MM = 2.0
 Z_OFFSET_FRAC = 0.3
+SIZENORM_PX = 12         # rung 2b (PROTOCOL.md G1): nodule diameter spans 12 of 24 px
 
 # Inclusion and label (PROTOCOL.md C2).
 MIN_READERS = 3
@@ -41,8 +42,18 @@ def to_model_input(hu48: np.ndarray) -> np.ndarray:
     Works on any array whose last two axes are 48x48.
     """
     a = (STORE_SIZE - MODEL_SIZE) // 2
-    c = np.asarray(hu48, dtype=np.float32)[..., a:a + MODEL_SIZE, a:a + MODEL_SIZE]
+    return window(np.asarray(hu48)[..., a:a + MODEL_SIZE, a:a + MODEL_SIZE])
+
+
+def window(hu: np.ndarray) -> np.ndarray:
+    """Lung window W 1500 / L -600: HU -> [0, 1] float32, clipped."""
+    c = np.asarray(hu, dtype=np.float32)
     return np.clip((c - LUNG_LO) / (LUNG_HI - LUNG_LO), 0.0, 1.0)
+
+
+def sizenorm_mm_per_px(diameter_mm: float) -> float:
+    """Pixel size that makes the nodule diameter span SIZENORM_PX pixels (PROTOCOL.md G1)."""
+    return float(diameter_mm) / SIZENORM_PX
 
 
 def z_offsets(diameter_mm: float) -> list:
@@ -239,16 +250,20 @@ def extract_crops(vol, z, row_mm, col_mm, centroid, offsets_mm, size=STORE_SIZE,
     return out
 
 
-def crops_for_series(series_dir: str, nodules: list) -> dict:
-    """Load one series, extract 3 crops per nodule. nodules: list of row dicts."""
+def crops_for_series(series_dir: str, nodules: list, sizenorm: bool = False) -> dict:
+    """Load one series, extract 3 crops per nodule. nodules: list of row dicts.
+
+    sizenorm=False: 48x48 at 1.25 mm/px (C3). sizenorm=True: 24x24 at diameter/12 mm/px (G1)."""
     v = load_volume(Path(series_dir))
     if v["qa"]["orientation"] == "other":
         raise ValueError(f"non-axial series {series_dir}")
     hu, qa = [], []
     for n in nodules:
         offs = z_offsets(n["diameter_mm"])
-        c = extract_crops(v["vol"], v["z"], v["row_mm"], v["col_mm"], (n["c_row"], n["c_col"], n["c_z"]), offs)
-        if v["qa"]["orientation"] == "axial_rot180":   # to standard patient orientation; centre stays at 23.5
+        geom = (dict(size=MODEL_SIZE, mm=sizenorm_mm_per_px(n["diameter_mm"])) if sizenorm
+                else dict(size=STORE_SIZE, mm=MM_PER_PX))
+        c = extract_crops(v["vol"], v["z"], v["row_mm"], v["col_mm"], (n["c_row"], n["c_col"], n["c_z"]), offs, **geom)
+        if v["qa"]["orientation"] == "axial_rot180":   # to standard patient orientation; centre stays at the middle
             c = c[:, ::-1, ::-1]
         hu.append(c)
         # contours are drawn on slices: their z must coincide with a slice position
